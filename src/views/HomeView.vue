@@ -60,7 +60,7 @@ export default {
     }
   },
   mounted() {
-    this.searchQuery = 'programming';
+    // this.searchQuery = 'programming';
     this.searchVideos();
   }
 };
