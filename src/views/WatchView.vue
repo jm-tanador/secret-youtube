@@ -1,23 +1,23 @@
 <template>
-  <div class="watch-container">
-    <button @click="$router.back()" class="back-button">← Back</button>
-    
-    <div class="player-wrapper">
-      <iframe
-        :src="`https://www.youtube-nocookie.com/embed/${videoId}`"
-        frameborder="0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowfullscreen
-        class="iframe-player"
-      ></iframe>
-    </div>
+    <div class="watch-container">
+        <button @click="$router.back()" class="back-button">← Back</button>
+        
+        <div class="player-wrapper">
+            <iframe
+                :src="`https://www.youtube-nocookie.com/embed/${videoId}`"
+                frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen
+                class="iframe-player"
+            ></iframe>
+        </div>
 
-    <div v-if="videoDetails" class="details-section">
-      <h1 class="title">{{ videoDetails.snippet.title }}</h1>
-      <p class="channel">{{ videoDetails.snippet.channelTitle }}</p>
-      <p class="description">{{ videoDetails.snippet.description }}</p>
+        <div v-if="videoDetails" class="details-section">
+            <h1 class="title">{{ videoDetails.snippet.title }}</h1>
+            <p class="channel">{{ videoDetails.snippet.channelTitle }}</p>
+            <p class="description">{{ videoDetails.snippet.description }}</p>
+        </div>
     </div>
-  </div>
 </template>
 
 <script>
