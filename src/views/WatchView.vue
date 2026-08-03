@@ -48,9 +48,12 @@ export default {
       videoDetails: null,
       isFloating: false,
       isDragging: false,
-      // Default offset from the bottom-right corner when first floated
-      position: { x: 20, y: 20 },
-      dragStart: { x: 0, y: 0 }
+      // Default coordinates (x = left, y = top)
+      position: { x: 0, y: 0 },
+      dragStart: { x: 0, y: 0 },
+      // Configuration for floating player size
+      floatWidth: 280,
+      floatHeight: 140
     };
   },
   computed: {
@@ -58,12 +61,11 @@ export default {
       if (!this.isFloating) return {};
       return {
         position: 'fixed',
-        bottom: `${this.position.y}px`,
-        right: `${this.position.x}px`,
-        width: '380px',
-        height: '240px',
-        zIndex: '9999',
-        resize: 'none' // Disable standard resize to prevent dragging conflicts
+        left: `${this.position.x}px`,
+        top: `${this.position.y}px`,
+        width: `${this.floatWidth}px`,
+        height: `${this.floatHeight}px`,
+        zIndex: '9999'
       };
     }
   },
@@ -71,8 +73,9 @@ export default {
     toggleFloat() {
       this.isFloating = !this.isFloating;
       if (this.isFloating) {
-        // Reset to initial bottom-right corner coordinates on float
-        this.position = { x: 20, y: 20 };
+        // Position initial window at bottom-right corner relative to screen size
+        this.position.x = window.innerWidth - this.floatWidth - 20;
+        this.position.y = window.innerHeight - this.floatHeight - 20;
       }
     },
     onMouseDown(e) {
@@ -82,9 +85,9 @@ export default {
 
       this.isDragging = true;
       
-      // Calculate coordinates relative to screen boundaries
-      this.dragStart.x = e.clientX + this.position.x;
-      this.dragStart.y = e.clientY + this.position.y;
+      // Calculate cursor offset position relative to top-left of player container
+      this.dragStart.x = e.clientX - this.position.x;
+      this.dragStart.y = e.clientY - this.position.y;
 
       window.addEventListener('mousemove', this.onMouseMove);
       window.addEventListener('mouseup', this.onMouseUp);
@@ -92,13 +95,15 @@ export default {
     onMouseMove(e) {
       if (!this.isDragging) return;
 
-      this.position.x = this.dragStart.x - e.clientX;
-      this.position.y = this.dragStart.y - e.clientY;
+      // Calculate temporary new top-left coordinates
+      const newX = e.clientX - this.dragStart.x;
+      const newY = e.clientY - this.dragStart.y;
 
-      // Keep inside visible screen boundaries
       const padding = 10;
-      this.position.x = Math.max(padding, Math.min(window.innerWidth - 390, this.position.x));
-      this.position.y = Math.max(padding, Math.min(window.innerHeight - 250, this.position.y));
+
+      // Restrict calculations to screen boundaries dynamically
+      this.position.x = Math.max(padding, Math.min(window.innerWidth - this.floatWidth - padding, newX));
+      this.position.y = Math.max(padding, Math.min(window.innerHeight - this.floatHeight - padding, newY));
     },
     onMouseUp() {
       this.isDragging = false;
@@ -107,7 +112,6 @@ export default {
     }
   },
   beforeUnmount() {
-    // Ensure event cleanups occur if navigating away while dragging
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('mouseup', this.onMouseUp);
   },
