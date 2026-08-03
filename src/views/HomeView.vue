@@ -5,8 +5,8 @@
             <div class="header-left">
                 <v-btn icon="mdi-menu" variant="text" class="menu-btn"></v-btn>
                 <div class="logo-container" @click="resetToHome">
-                    <v-icon color="red-darken-2" icon="mdi-youtube" size="large" class="logo-icon"></v-icon>
-                    <span class="logo-text">YouTube</span>
+                    <v-icon icon="mdi-youtube" size="large" class="logo-icon"></v-icon>
+                    <span class="logo-text">Ebutuoy</span>
                 </div>
             </div>
 
@@ -17,11 +17,13 @@
                         @keyup.enter="searchVideos" 
                         placeholder="Search" 
                         class="yt-search-input"
+                        bg-color="#121212"
                         clearable
                         hide-details
                         variant="solo"
                         density="compact"
                         flat
+                        autocomplete="off"
                     />
                     <button @click="searchVideos" class="yt-search-btn">
                         <v-icon icon="mdi-magnify" size="large"></v-icon>
@@ -40,28 +42,28 @@
         </header>
 
         <div class="main-body">
-        <!-- 2. Left Sidebar (Collapses on smaller screens) -->
+        <!-- 2. Left Sidebar -->
         <aside class="yt-sidebar d-none d-md-block">
             <div class="sidebar-item active">
-            <v-icon icon="mdi-home" class="mr-6"></v-icon>
-            <span>Home</span>
+                <v-icon icon="mdi-home" class="mr-6"></v-icon>
+                <span>Home</span>
             </div>
             <div class="sidebar-item">
-            <v-icon icon="mdi-play-circle-outline" class="mr-6"></v-icon>
-            <span>Shorts</span>
+                <v-icon icon="mdi-play-circle-outline" class="mr-6"></v-icon>
+                <span>Shorts</span>
             </div>
             <div class="sidebar-item">
-            <v-icon icon="mdi-youtube-subscription" class="mr-6"></v-icon>
-            <span>Subscriptions</span>
+                <v-icon icon="mdi-youtube-subscription" class="mr-6"></v-icon>
+                <span>Subscriptions</span>
             </div>
             <hr class="sidebar-divider" />
             <div class="sidebar-item">
-            <v-icon icon="mdi-folder-play-outline" class="mr-6"></v-icon>
-            <span>Library</span>
+                <v-icon icon="mdi-folder-play-outline" class="mr-6"></v-icon>
+                <span>Library</span>
             </div>
             <div class="sidebar-item">
-            <v-icon icon="mdi-history" class="mr-6"></v-icon>
-            <span>History</span>
+                <v-icon icon="mdi-history" class="mr-6"></v-icon>
+                <span>History</span>
             </div>
         </aside>
 
@@ -69,34 +71,35 @@
         <main class="yt-content-feed">
             <!-- Loader -->
             <div v-if="loading" class="loading-wrapper">
-            <v-progress-circular indeterminate color="red" size="48"></v-progress-circular>
+                <v-progress-circular indeterminate color="red" size="48"></v-progress-circular>
             </div>
 
             <!-- Video Grid -->
             <div v-else class="yt-video-grid">
-            <div 
-                v-for="video in videos" 
-                :key="video.id.videoId" 
-                class="yt-video-card"
-                @click="playVideo(video.id.videoId)"
-            >
-                <div class="thumbnail-container">
-                <img :src="video.snippet.thumbnails.medium.url" alt="thumbnail" class="yt-thumbnail" />
+                <div 
+                    v-for="video in videos" 
+                    :key="video.id.videoId" 
+                    class="yt-video-card"
+                    @click="playVideo(video.id.videoId)"
+                >
+                    <div class="thumbnail-container">
+                        <img :src="video.snippet.thumbnails.medium.url" alt="thumbnail" class="yt-thumbnail" />
+                    </div>
+                    
+                    <div class="yt-video-details">
+                        <!-- Swapped to grey-darken-3 for dark mode compatibility -->
+                        <v-avatar color="grey-darken-3" size="36" class="mr-3 mt-1 text-white">
+                            <span class="text-caption text-uppercase font-weight-bold">
+                                {{ video.snippet.channelTitle.charAt(0) }}
+                            </span>
+                        </v-avatar>
+                        <div class="details-metadata">
+                            <h3 class="yt-video-title">{{ decodeHtml(video.snippet.title) }}</h3>
+                            <p class="yt-channel-name">{{ video.snippet.channelTitle }}</p>
+                            <p class="yt-views-time">1.2M views • 2 days ago</p>
+                        </div>
+                    </div>
                 </div>
-                
-                <div class="yt-video-details">
-                <v-avatar color="grey-lighten-2" size="36" class="mr-3 mt-1">
-                    <span class="text-caption text-uppercase font-weight-bold">
-                    {{ video.snippet.channelTitle.charAt(0) }}
-                    </span>
-                </v-avatar>
-                <div class="details-metadata">
-                    <h3 class="yt-video-title">{{ decodeHtml(video.snippet.title) }}</h3>
-                    <p class="yt-channel-name">{{ video.snippet.channelTitle }}</p>
-                    <p class="yt-views-time">1.2M views • 2 days ago</p>
-                </div>
-                </div>
-            </div>
             </div>
         </main>
         </div>
@@ -120,7 +123,6 @@ export default {
             if (!this.searchQuery) return;
             this.loading = true;
 
-            // Push search query to the URL bar
             this.$router.push({ query: { search_query: this.searchQuery } });
 
             try {
@@ -141,7 +143,6 @@ export default {
             this.searchQuery = 'trending';
             this.searchVideos();
         },
-        // Helper to decode HTML entities like &#39; or &quot; from YouTube's API
         decodeHtml(html) {
             const txt = document.createElement("textarea");
             txt.innerHTML = html;
@@ -149,7 +150,6 @@ export default {
         }
     },
     mounted() {
-        // this.searchQuery = 'programming';
         const queryParam = this.$route.query.search_query;
         if (queryParam) {
             this.searchQuery = queryParam;
@@ -167,7 +167,8 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background-color: #f9f9f9;
+  background-color: #0f0f0f;
+  color: #f1f1f1;
   font-family: Roboto, Arial, sans-serif;
 }
 
@@ -179,7 +180,7 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: #ffffff;
+  background-color: #0f0f0f;
   padding: 0 16px;
   height: 56px;
 }
@@ -202,6 +203,7 @@ export default {
 
 .logo-icon {
   font-size: 28px !important;
+  color: #ff0000; /* Standard red icon colors */
 }
 
 .logo-text {
@@ -209,7 +211,7 @@ export default {
   font-weight: bold;
   letter-spacing: -0.5px;
   font-family: "Oswald", "Arial Black", sans-serif;
-  color: #0f0f0f;
+  color: #f1f1f1;
 }
 
 .header-center {
@@ -222,41 +224,37 @@ export default {
 .search-wrapper {
   display: flex;
   width: 100%;
-  border: 1px solid #ccc;
+  border: 1px solid #303030;
   border-radius: 40px 0 0 40px;
-  background-color: #ffffff;
+  background-color: #121212;
   overflow: hidden;
 }
 
 .yt-search-input {
   width: 100%;
-  padding: 8px 16px;
   border: none;
   font-size: 16px;
   outline: none;
 }
 
-.yt-search-input:focus {
-  border: 1.5px solid #1c62b9;
-  border-radius: 40px 0 0 40px;
-}
-
 .yt-search-btn {
-  background-color: #f8f8f8;
+  background-color: #222222;
   border: none;
-  border-left: 1px solid #ccc;
+  border-left: 1px solid #303030;
   padding: 0 20px;
   cursor: pointer;
   display: flex;
   align-items: center;
+  color: #f1f1f1;
 }
 
 .yt-search-btn:hover {
-  background-color: #f0f0f0;
+  background-color: #272727;
 }
 
 .mic-btn {
-  background-color: #f2f2f2 !important;
+  background-color: #1a1a1a !important;
+  color: #f1f1f1 !important;
 }
 
 .header-right {
@@ -275,7 +273,7 @@ export default {
 /* Sidebar Navigation */
 .yt-sidebar {
   width: 240px;
-  background-color: #ffffff;
+  background-color: #0f0f0f;
   padding: 12px;
   box-sizing: border-box;
   overflow-y: auto;
@@ -288,22 +286,22 @@ export default {
   border-radius: 10px;
   cursor: pointer;
   font-size: 14px;
-  color: #0f0f0f;
+  color: #f1f1f1;
   margin-bottom: 2px;
 }
 
 .sidebar-item:hover {
-  background-color: #f2f2f2;
+  background-color: #272727;
 }
 
 .sidebar-item.active {
-  background-color: #f2f2f2;
+  background-color: #272727;
   font-weight: bold;
 }
 
 .sidebar-divider {
   border: 0;
-  border-top: 1px solid #e5e5e5;
+  border-top: 1px solid #2f2f2f;
   margin: 12px 0;
 }
 
@@ -312,6 +310,7 @@ export default {
   flex: 1;
   padding: 24px;
   overflow-y: auto;
+  background-color: #0f0f0f;
 }
 
 .loading-wrapper {
@@ -321,7 +320,7 @@ export default {
   height: 50vh;
 }
 
-/* Responsive CSS Grid for YouTube Layout */
+/* Responsive CSS Grid */
 .yt-video-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -368,7 +367,7 @@ export default {
 .yt-video-title {
   font-size: 14px;
   font-weight: 550;
-  color: #0f0f0f;
+  color: #f1f1f1;
   line-height: 20px;
   margin: 0 0 4px 0;
   display: -webkit-box;
@@ -379,13 +378,13 @@ export default {
 
 .yt-channel-name {
   font-size: 12px;
-  color: #606060;
+  color: #aaaaaa;
   margin: 0;
 }
 
 .yt-views-time {
   font-size: 12px;
-  color: #606060;
+  color: #aaaaaa;
   margin: 2px 0 0 0;
 }
 </style>
