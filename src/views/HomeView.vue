@@ -3,7 +3,7 @@
         <!-- 1. YouTube Header Navigation -->
         <header class="yt-header">
             <div class="header-left">
-                <v-btn icon="mdi-menu" variant="text" class="menu-btn"></v-btn>
+                <!-- <v-btn icon="mdi-menu" variant="text" class="menu-btn"></v-btn> -->
                 <div class="logo-container" @click="resetToHome">
                     <v-icon icon="mdi-youtube" size="large" class="logo-icon"></v-icon>
                     <span class="logo-text">Ebutuoy</span>
@@ -29,21 +29,25 @@
                         <v-icon icon="mdi-magnify" size="large"></v-icon>
                     </button>
                 </div>
-                <v-btn icon="mdi-microphone" variant="flat" class="mic-btn ml-2" size="40"></v-btn>
+                <!-- <v-btn icon="mdi-microphone" variant="flat" class="mic-btn ml-2" size="40"></v-btn> -->
             </div>
 
-            <div class="header-right">
+            <div class="wip blink-warning header-right">
+                <i class="mdi mdi-alert"></i> Work in progress...
+            </div>
+
+            <!-- <div class="header-right">
                 <v-btn icon="mdi-video-plus-outline" variant="text" class="d-none d-sm-inline-flex"></v-btn>
                 <v-btn icon="mdi-bell-outline" variant="text" class="d-none d-sm-inline-flex"></v-btn>
                 <v-avatar color="red-darken-1" size="32" class="ml-2 text-white">
                     <span class="text-caption font-weight-bold">Y</span>
                 </v-avatar>
-            </div>
+            </div> -->
         </header>
 
         <div class="main-body">
         <!-- 2. Left Sidebar -->
-        <aside class="yt-sidebar d-none d-md-block">
+        <!-- <aside class="yt-sidebar d-none d-md-block">
             <div class="sidebar-item active">
                 <v-icon icon="mdi-home" class="mr-6"></v-icon>
                 <span>Home</span>
@@ -65,7 +69,7 @@
                 <v-icon icon="mdi-history" class="mr-6"></v-icon>
                 <span>History</span>
             </div>
-        </aside>
+        </aside> -->
 
         <!-- 3. Main Feed -->
         <main class="yt-content-feed">
@@ -217,6 +221,7 @@ export default {
 .header-center {
   display: flex;
   align-items: center;
+  
   flex: 0 1 728px;
   margin: 0 16px;
 }
@@ -268,6 +273,30 @@ export default {
   display: flex;
   flex: 1;
   overflow: hidden;
+}
+
+.wip {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.blink-warning {
+    color: red;
+    font-weight: bold;
+    animation: pulse-red 1.5s infinite;
+}
+
+@keyframes pulse-red {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 /* Sidebar Navigation */

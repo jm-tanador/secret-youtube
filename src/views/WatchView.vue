@@ -30,10 +30,45 @@
           ></iframe>
       </div>
 
+      <!-- Main Video Details -->
       <div v-if="videoDetails" class="details-section">
           <h1 class="title">{{ videoDetails.snippet.title }}</h1>
           <p class="channel">{{ videoDetails.snippet.channelTitle }}</p>
           <p class="description">{{ videoDetails.snippet.description }}</p>
+      </div>
+
+      <!-- RELATED VIDEOS SECTION -->
+      <div class="related-section">
+          <h2 class="related-title">Related Videos</h2>
+          
+          <div v-if="isLoadingRelated" class="loading-state">
+            Loading recommendations...
+          </div>
+
+          <div v-else-if="relatedVideos.length > 0" class="related-grid">
+              <div 
+                  v-for="video in relatedVideos" 
+                  :key="getVideoId(video)" 
+                  class="related-card"
+                  @click="playVideo(getVideoId(video))"
+              >
+                  <div class="thumbnail-wrapper">
+                      <img 
+                          :src="video.snippet?.thumbnails?.medium?.url || video.snippet?.thumbnails?.default?.url" 
+                          :alt="video.snippet?.title" 
+                          class="thumbnail-img"
+                      />
+                  </div>
+                  <div class="video-info">
+                      <h3 class="video-title">{{ video.snippet?.title }}</h3>
+                      <p class="video-channel">{{ video.snippet?.channelTitle }}</p>
+                  </div>
+              </div>
+          </div>
+
+          <div v-else class="no-videos">
+              No related videos found.
+          </div>
       </div>
   </div>
 </template>
@@ -46,12 +81,12 @@ export default {
     return {
       videoId: this.$route.params.id,
       videoDetails: null,
+      relatedVideos: [],
+      isLoadingRelated: false,
       isFloating: false,
       isDragging: false,
-      // Default coordinates (x = left, y = top)
       position: { x: 0, y: 0 },
       dragStart: { x: 0, y: 0 },
-      // Configuration for floating player size
       floatWidth: 280,
       floatHeight: 140
     };
@@ -69,23 +104,78 @@ export default {
       };
     }
   },
+  watch: {
+    '$route.params.id': {
+      immediate: true,
+      handler(newId) {
+        if (newId) {
+          this.videoId = newId;
+          this.loadVideoData();
+        }
+      }
+    }
+  },
   methods: {
+    async loadVideoData() {
+      await this.fetchVideoDetails();
+      await this.fetchRelatedVideos();
+    },
+    async fetchVideoDetails() {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/videos/${this.videoId}`);
+        if (response.data.items && response.data.items.length > 0) {
+          this.videoDetails = response.data.items[0];
+        }
+      } catch (error) {
+        console.error("Error fetching video details:", error);
+      }
+    },
+    async fetchRelatedVideos() {
+      this.isLoadingRelated = true;
+      try {
+        // Use channel title as search query to get related videos from backend /search endpoint
+        const searchQuery = this.videoDetails?.snippet?.channelTitle || 'trending';
+
+        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/search`, {
+          params: {
+            q: searchQuery
+          }
+        });
+
+        const items = response.data.items || [];
+        
+        // Filter out the currently playing video from suggestions
+        this.relatedVideos = items.filter(
+          item => this.getVideoId(item) !== this.videoId
+        );
+      } catch (error) {
+        console.error("Error fetching related videos:", error);
+      } finally {
+        this.isLoadingRelated = false;
+      }
+    },
+    getVideoId(video) {
+      if (typeof video.id === 'object') return video.id.videoId;
+      return video.id;
+    },
+    playVideo(id) {
+      if (this.isFloating) {
+        this.isFloating = false;
+      }
+      this.$router.push(`/watch/${id}`);
+    },
     toggleFloat() {
       this.isFloating = !this.isFloating;
       if (this.isFloating) {
-        // Position initial window at bottom-right corner relative to screen size
         this.position.x = window.innerWidth - this.floatWidth - 20;
         this.position.y = window.innerHeight - this.floatHeight - 20;
       }
     },
     onMouseDown(e) {
       if (!this.isFloating) return;
-      // Do not trigger drag if clicking the dock/close button
       if (e.target.closest('.close-float-btn')) return;
 
       this.isDragging = true;
-      
-      // Calculate cursor offset position relative to top-left of player container
       this.dragStart.x = e.clientX - this.position.x;
       this.dragStart.y = e.clientY - this.position.y;
 
@@ -95,13 +185,10 @@ export default {
     onMouseMove(e) {
       if (!this.isDragging) return;
 
-      // Calculate temporary new top-left coordinates
       const newX = e.clientX - this.dragStart.x;
       const newY = e.clientY - this.dragStart.y;
-
       const padding = 10;
 
-      // Restrict calculations to screen boundaries dynamically
       this.position.x = Math.max(padding, Math.min(window.innerWidth - this.floatWidth - padding, newX));
       this.position.y = Math.max(padding, Math.min(window.innerHeight - this.floatHeight - padding, newY));
     },
@@ -114,16 +201,6 @@ export default {
   beforeUnmount() {
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('mouseup', this.onMouseUp);
-  },
-  async mounted() {
-    try {
-      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/videos/${this.videoId}`);
-      if (response.data.items && response.data.items.length > 0) {
-        this.videoDetails = response.data.items[0];
-      }
-    } catch (error) {
-      console.error("Error fetching video details:", error);
-    }
   }
 };
 </script>
@@ -154,7 +231,7 @@ export default {
   background-color: #3f3f3f;
 }
 
-/* Resizable Player Container (Default inline state) */
+/* Resizable Player Container */
 .player-wrapper { 
   position: relative; 
   width: 100%; 
@@ -180,7 +257,6 @@ export default {
   flex-direction: column;
 }
 
-/* Header bar for dragging handle */
 .drag-handle {
   background-color: #272727;
   color: #f1f1f1;
@@ -206,7 +282,6 @@ export default {
   color: #ffffff;
 }
 
-/* Overlay covering the iframe during drags */
 .drag-overlay {
   position: absolute;
   top: 0;
@@ -227,6 +302,7 @@ export default {
 
 .details-section { 
   margin-top: 20px; 
+  margin-bottom: 30px;
 }
 
 .title { 
@@ -249,5 +325,86 @@ export default {
   color: #e5e5e5;
   padding: 15px; 
   border-radius: 8px; 
+}
+
+/* RELATED VIDEOS STYLES */
+.related-section {
+  border-top: 1px solid #3f3f3f;
+  padding-top: 20px;
+  margin-top: 20px;
+}
+
+.related-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 15px;
+  color: #f1f1f1;
+}
+
+.related-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.related-card {
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+  padding: 8px;
+  background-color: transparent;
+}
+
+.related-card:hover {
+  background-color: #272727;
+  transform: translateY(-2px);
+}
+
+.thumbnail-wrapper {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background-color: #000;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.thumbnail-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.video-title {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+  margin: 0 0 6px 0;
+  color: #f1f1f1;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.video-channel {
+  font-size: 12px;
+  color: #aaaaaa;
+  margin: 0;
+}
+
+.loading-state, .no-videos {
+  color: #aaaaaa;
+  font-size: 14px;
+  padding: 20px 0;
 }
 </style>
