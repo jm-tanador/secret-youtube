@@ -18,9 +18,10 @@
               <button @click.stop="toggleFloat" class="close-float-btn">✕ Dock</button>
           </div>
 
-          <!-- Cover overlay used when dragging so the mouse doesn't get trapped by the iframe -->
+          <!-- Cover overlay used when dragging -->
           <div v-if="isDragging" class="drag-overlay"></div>
 
+          <!-- Embedded Video Player -->
           <iframe
               :src="`https://www.youtube-nocookie.com/embed/${videoId}`"
               frameborder="0"
@@ -32,9 +33,17 @@
 
       <!-- Main Video Details -->
       <div v-if="videoDetails" class="details-section">
-          <h1 class="title">{{ videoDetails.snippet.title }}</h1>
-          <p class="channel">{{ videoDetails.snippet.channelTitle }}</p>
-          <p class="description">{{ videoDetails.snippet.description }}</p>
+          <h1 class="title">{{ videoDetails.snippet?.title }}</h1>
+          
+          <div class="video-meta-bar">
+              <span class="channel">{{ videoDetails.snippet?.channelTitle }}</span>
+              <span class="meta-separator">•</span>
+              <span class="meta-views">{{ formatViews(videoDetails.statistics?.viewCount) }}</span>
+              <span class="meta-separator">•</span>
+              <span class="meta-date">{{ formatDate(videoDetails.snippet?.publishedAt) }}</span>
+          </div>
+
+          <p class="description">{{ videoDetails.snippet?.description }}</p>
       </div>
 
       <!-- RELATED VIDEOS SECTION -->
@@ -62,6 +71,9 @@
                   <div class="video-info">
                       <h3 class="video-title">{{ video.snippet?.title }}</h3>
                       <p class="video-channel">{{ video.snippet?.channelTitle }}</p>
+                      <p class="video-views-date">
+                          {{ formatViews(video.statistics?.viewCount) }} • {{ timeAgo(video.snippet?.publishedAt) }}
+                      </p>
                   </div>
               </div>
           </div>
@@ -133,18 +145,13 @@ export default {
     async fetchRelatedVideos() {
       this.isLoadingRelated = true;
       try {
-        // Use channel title as search query to get related videos from backend /search endpoint
         const searchQuery = this.videoDetails?.snippet?.channelTitle || 'trending';
 
         const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/search`, {
-          params: {
-            q: searchQuery
-          }
+          params: { q: searchQuery }
         });
 
         const items = response.data.items || [];
-        
-        // Filter out the currently playing video from suggestions
         this.relatedVideos = items.filter(
           item => this.getVideoId(item) !== this.videoId
         );
@@ -155,8 +162,10 @@ export default {
       }
     },
     getVideoId(video) {
-      if (typeof video.id === 'object') return video.id.videoId;
-      return video.id;
+      if (typeof video.id === 'object' && video.id !== null) {
+        return video.id.videoId || '';
+      }
+      return video.id || '';
     },
     playVideo(id) {
       if (this.isFloating) {
@@ -170,6 +179,56 @@ export default {
         this.position.x = window.innerWidth - this.floatWidth - 20;
         this.position.y = window.innerHeight - this.floatHeight - 20;
       }
+    },
+    formatViews(views) {
+      if (views === undefined || views === null || views === '') return 'No views';
+      const num = Number(views);
+      if (isNaN(num)) return '0 views';
+
+      if (num >= 1_000_000_000) {
+        return (num / 1_000_000_000).toFixed(1).replace(/\.0$/, '') + 'B views';
+      }
+      if (num >= 1_000_000) {
+        return (num / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M views';
+      }
+      if (num >= 1_000) {
+        return (num / 1_000).toFixed(1).replace(/\.0$/, '') + 'K views';
+      }
+      return `${num} ${num === 1 ? 'view' : 'views'}`;
+    },
+    formatDate(dateString) {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      return date.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    },
+    timeAgo(dateString) {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      const now = new Date();
+      const seconds = Math.floor((now - date) / 1000);
+
+      if (seconds < 60) return 'Just now';
+
+      const intervals = [
+        { label: 'year', seconds: 31536000 },
+        { label: 'month', seconds: 2592000 },
+        { label: 'week', seconds: 604800 },
+        { label: 'day', seconds: 86400 },
+        { label: 'hour', seconds: 3600 },
+        { label: 'minute', seconds: 60 }
+      ];
+
+      for (const interval of intervals) {
+        const count = Math.floor(seconds / interval.seconds);
+        if (count >= 1) {
+          return `${count} ${interval.label}${count > 1 ? 's' : ''} ago`;
+        }
+      }
+      return 'Just now';
     },
     onMouseDown(e) {
       if (!this.isFloating) return;
@@ -231,7 +290,6 @@ export default {
   background-color: #3f3f3f;
 }
 
-/* Resizable Player Container */
 .player-wrapper { 
   position: relative; 
   width: 100%; 
@@ -240,16 +298,13 @@ export default {
   min-width: 320px;
   min-height: 180px;
   max-height: 80vh;
-
   resize: both; 
   overflow: hidden; 
-  
   background: #000; 
   border-radius: 12px;
   border: 1px solid #3f3f3f;
 }
 
-/* Floating styling modifications */
 .player-wrapper.is-floating {
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.5);
@@ -307,14 +362,26 @@ export default {
 
 .title { 
   font-size: 20px; 
-  margin-bottom: 5px; 
+  margin-bottom: 8px; 
   color: #f1f1f1;
 }
 
-.channel { 
-  font-size: 14px; 
-  color: #aaaaaa; 
-  margin-bottom: 15px; 
+.video-meta-bar {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  color: #aaaaaa;
+  margin-bottom: 15px;
+  gap: 8px;
+}
+
+.channel {
+  font-weight: 500;
+  color: #f1f1f1;
+}
+
+.meta-separator {
+  color: #666;
 }
 
 .description { 
@@ -327,7 +394,6 @@ export default {
   border-radius: 8px; 
 }
 
-/* RELATED VIDEOS STYLES */
 .related-section {
   border-top: 1px solid #3f3f3f;
   padding-top: 20px;
@@ -400,6 +466,12 @@ export default {
   font-size: 12px;
   color: #aaaaaa;
   margin: 0;
+}
+
+.video-views-date {
+  font-size: 12px;
+  color: #888888;
+  margin-top: 2px;
 }
 
 .loading-state, .no-videos {
