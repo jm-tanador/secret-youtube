@@ -1,9 +1,11 @@
 <template>
   <div class="watch-container">
-      <button @click="$router.back()" class="back-button">← Back</button>
-      <button @click="toggleFloat" class="float-toggle-btn">
-          {{ isFloating ? '✕ Dock Video' : '⚡ Float Video' }}
-      </button>
+      <div class="top-nav-actions">
+          <button @click="$router.back()" class="back-button">← Back</button>
+          <button @click="toggleFloat" class="float-toggle-btn">
+              {{ isFloating ? '✕ Dock Video' : '⚡ Float Video' }}
+          </button>
+      </div>
       
       <!-- The player wrapper handles drag events when isFloating is active -->
       <div 
@@ -31,55 +33,57 @@
           ></iframe>
       </div>
 
-      <!-- Main Video Details -->
-      <div v-if="videoDetails" class="details-section">
-          <h1 class="title">{{ videoDetails.snippet?.title }}</h1>
-          
-          <div class="video-meta-bar">
-              <span class="channel">{{ videoDetails.snippet?.channelTitle }}</span>
-              <span class="meta-separator">•</span>
-              <span class="meta-views">{{ formatViews(videoDetails.statistics?.viewCount) }}</span>
-              <span class="meta-separator">•</span>
-              <span class="meta-date">{{ formatDate(videoDetails.snippet?.publishedAt) }}</span>
+      <div class="content-wrapper">
+          <!-- Main Video Details -->
+          <div v-if="videoDetails" class="details-section">
+              <h1 class="title">{{ videoDetails.snippet?.title }}</h1>
+              
+              <div class="video-meta-bar">
+                  <span class="channel">{{ videoDetails.snippet?.channelTitle }}</span>
+                  <span class="meta-separator">•</span>
+                  <span class="meta-views">{{ formatViews(videoDetails.statistics?.viewCount) }}</span>
+                  <span class="meta-separator">•</span>
+                  <span class="meta-date">{{ formatDate(videoDetails.snippet?.publishedAt) }}</span>
+              </div>
+
+              <p class="description">{{ videoDetails.snippet?.description }}</p>
           </div>
 
-          <p class="description">{{ videoDetails.snippet?.description }}</p>
-      </div>
+          <!-- RELATED VIDEOS SECTION -->
+          <div class="related-section">
+              <h2 class="related-title">Related Videos</h2>
+              
+              <div v-if="isLoadingRelated" class="loading-state">
+                  Loading recommendations...
+              </div>
 
-      <!-- RELATED VIDEOS SECTION -->
-      <div class="related-section">
-          <h2 class="related-title">Related Videos</h2>
-          
-          <div v-if="isLoadingRelated" class="loading-state">
-            Loading recommendations...
-          </div>
-
-          <div v-else-if="relatedVideos.length > 0" class="related-grid">
-              <div 
-                  v-for="video in relatedVideos" 
-                  :key="getVideoId(video)" 
-                  class="related-card"
-                  @click="playVideo(getVideoId(video))"
-              >
-                  <div class="thumbnail-wrapper">
-                      <img 
-                          :src="video.snippet?.thumbnails?.medium?.url || video.snippet?.thumbnails?.default?.url" 
-                          :alt="video.snippet?.title" 
-                          class="thumbnail-img"
-                      />
-                  </div>
-                  <div class="video-info">
-                      <h3 class="video-title">{{ video.snippet?.title }}</h3>
-                      <p class="video-channel">{{ video.snippet?.channelTitle }}</p>
-                      <p class="video-views-date">
-                          {{ formatViews(video.statistics?.viewCount) }} • {{ timeAgo(video.snippet?.publishedAt) }}
-                      </p>
+              <div v-else-if="relatedVideos.length > 0" class="related-grid">
+                  <div 
+                      v-for="video in relatedVideos" 
+                      :key="getVideoId(video)" 
+                      class="related-card"
+                      @click="playVideo(getVideoId(video))"
+                  >
+                      <div class="thumbnail-wrapper">
+                          <img 
+                              :src="video.snippet?.thumbnails?.medium?.url || video.snippet?.thumbnails?.default?.url" 
+                              :alt="video.snippet?.title" 
+                              class="thumbnail-img" 
+                          />
+                      </div>
+                      <div class="video-info">
+                          <h3 class="video-title">{{ video.snippet?.title }}</h3>
+                          <p class="video-channel">{{ video.snippet?.channelTitle }}</p>
+                          <p class="video-views-date">
+                              {{ formatViews(video.statistics?.viewCount) }} • {{ timeAgo(video.snippet?.publishedAt) }}
+                          </p>
+                      </div>
                   </div>
               </div>
-          </div>
 
-          <div v-else class="no-videos">
-              No related videos found.
+              <div v-else class="no-videos">
+                  No related videos found.
+              </div>
           </div>
       </div>
   </div>
@@ -100,7 +104,7 @@ export default {
       position: { x: 0, y: 0 },
       dragStart: { x: 0, y: 0 },
       floatWidth: 280,
-      floatHeight: 140
+      floatHeight: 158
     };
   },
   computed: {
@@ -176,8 +180,16 @@ export default {
     toggleFloat() {
       this.isFloating = !this.isFloating;
       if (this.isFloating) {
-        this.position.x = window.innerWidth - this.floatWidth - 20;
-        this.position.y = window.innerHeight - this.floatHeight - 20;
+        // Adapt float dimensions on smaller screens
+        if (window.innerWidth < 600) {
+          this.floatWidth = 200;
+          this.floatHeight = 112;
+        } else {
+          this.floatWidth = 280;
+          this.floatHeight = 158;
+        }
+        this.position.x = window.innerWidth - this.floatWidth - 16;
+        this.position.y = window.innerHeight - this.floatHeight - 16;
       }
     },
     formatViews(views) {
@@ -267,60 +279,63 @@ export default {
 <style scoped>
 .watch-container { 
   padding: 20px; 
-  max-width: 900px; 
+  max-width: 1100px; 
   margin: 0 auto; 
-  font-family: sans-serif; 
+  font-family: Roboto, Arial, sans-serif; 
   color: #f1f1f1;
+}
+
+.top-nav-actions {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 10px;
 }
 
 .back-button, .float-toggle-btn { 
   padding: 8px 16px; 
-  margin-bottom: 15px; 
   cursor: pointer; 
   background-color: #272727;
   color: #f1f1f1;
   border: 1px solid #3f3f3f;
   border-radius: 18px;
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 500;
   transition: background-color 0.2s ease;
-  margin-right: 10px;
 }
 
 .back-button:hover, .float-toggle-btn:hover {
   background-color: #3f3f3f;
 }
 
+/* Fluid, Aspect Ratio-based Player */
 .player-wrapper { 
   position: relative; 
   width: 100%; 
-  height: 500px; 
-  max-width: 100%;
-  min-width: 320px;
-  min-height: 180px;
-  max-height: 80vh;
-  resize: both; 
-  overflow: hidden; 
+  aspect-ratio: 16 / 9;
   background: #000; 
   border-radius: 12px;
-  border: 1px solid #3f3f3f;
+  overflow: hidden;
+  border: 1px solid #272727;
 }
 
 .player-wrapper.is-floating {
   border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.7);
   display: flex;
   flex-direction: column;
+  aspect-ratio: unset; /* allows custom drag sizes */
 }
 
 .drag-handle {
   background-color: #272727;
   color: #f1f1f1;
-  padding: 6px 12px;
+  padding: 4px 10px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   cursor: move;
-  font-size: 12px;
+  font-size: 11px;
   user-select: none;
   border-bottom: 1px solid #3f3f3f;
 }
@@ -330,7 +345,7 @@ export default {
   border: none;
   color: #aaaaaa;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .close-float-btn:hover {
@@ -355,13 +370,19 @@ export default {
   flex: 1;
 }
 
+.content-wrapper {
+  width: 100%;
+}
+
 .details-section { 
-  margin-top: 20px; 
-  margin-bottom: 30px;
+  margin-top: 16px; 
+  margin-bottom: 24px;
 }
 
 .title { 
-  font-size: 20px; 
+  font-size: 18px; 
+  font-weight: 600;
+  line-height: 1.4;
   margin-bottom: 8px; 
   color: #f1f1f1;
 }
@@ -369,10 +390,11 @@ export default {
 .video-meta-bar {
   display: flex;
   align-items: center;
-  font-size: 14px;
+  flex-wrap: wrap;
+  font-size: 13px;
   color: #aaaaaa;
-  margin-bottom: 15px;
-  gap: 8px;
+  margin-bottom: 12px;
+  gap: 6px;
 }
 
 .channel {
@@ -385,31 +407,31 @@ export default {
 }
 
 .description { 
-  font-size: 14px; 
+  font-size: 13.5px; 
   line-height: 1.5; 
   white-space: pre-line; 
-  background: #272727; 
+  background: #212121; 
   color: #e5e5e5;
-  padding: 15px; 
+  padding: 12px 16px; 
   border-radius: 8px; 
 }
 
 .related-section {
-  border-top: 1px solid #3f3f3f;
+  border-top: 1px solid #303030;
   padding-top: 20px;
   margin-top: 20px;
 }
 
 .related-title {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
-  margin-bottom: 15px;
+  margin-bottom: 14px;
   color: #f1f1f1;
 }
 
 .related-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 16px;
 }
 
@@ -419,14 +441,12 @@ export default {
   cursor: pointer;
   border-radius: 8px;
   overflow: hidden;
-  transition: transform 0.2s ease, background-color 0.2s ease;
-  padding: 8px;
-  background-color: transparent;
+  transition: background-color 0.2s ease;
+  padding: 6px;
 }
 
 .related-card:hover {
   background-color: #272727;
-  transform: translateY(-2px);
 }
 
 .thumbnail-wrapper {
@@ -447,36 +467,130 @@ export default {
 .video-info {
   display: flex;
   flex-direction: column;
+  min-width: 0; /* Prevents overflow in flex */
 }
 
 .video-title {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 500;
   line-height: 1.3;
-  margin: 0 0 6px 0;
+  margin: 0 0 4px 0;
   color: #f1f1f1;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.video-channel {
+.video-channel,
+.video-views-date {
   font-size: 12px;
   color: #aaaaaa;
   margin: 0;
 }
 
 .video-views-date {
-  font-size: 12px;
-  color: #888888;
   margin-top: 2px;
 }
 
 .loading-state, .no-videos {
   color: #aaaaaa;
-  font-size: 14px;
-  padding: 20px 0;
+  font-size: 13px;
+  padding: 16px 0;
+}
+
+/* ==========================================================================
+   RESPONSIVE MEDIA QUERIES
+   ========================================================================== */
+
+/* Tablets and below (max-width: 768px) */
+@media (max-width: 768px) {
+  .watch-container {
+    padding: 12px;
+  }
+
+  /* Switch related videos to YouTube-style horizontal rows */
+  .related-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .related-card {
+    flex-direction: row;
+    align-items: flex-start;
+    padding: 0;
+    gap: 12px;
+  }
+
+  .thumbnail-wrapper {
+    width: 140px;
+    min-width: 140px;
+    margin-bottom: 0;
+    border-radius: 6px;
+  }
+
+  .video-info {
+    flex: 1;
+  }
+}
+
+/* Mobile Screens (max-width: 480px) */
+@media (max-width: 480px) {
+  .watch-container {
+    padding: 0 0 24px 0; /* Edge to edge video container */
+  }
+
+  .top-nav-actions {
+    padding: 8px 12px;
+    margin-bottom: 0;
+  }
+
+  .back-button, .float-toggle-btn {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+
+  /* Full-bleed edge-to-edge player on phone screens */
+  .player-wrapper {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  /* Restore comfortable padding for content underneath the player */
+  .content-wrapper {
+    padding: 0 12px;
+  }
+
+  .title {
+    font-size: 16px;
+    margin-top: 8px;
+  }
+
+  .video-meta-bar {
+    font-size: 12px;
+    gap: 4px;
+  }
+
+  .description {
+    font-size: 12.5px;
+    padding: 10px 12px;
+  }
+
+  .thumbnail-wrapper {
+    width: 120px;
+    min-width: 120px;
+  }
+
+  .video-title {
+    font-size: 12.5px;
+    line-height: 1.25;
+  }
+
+  .video-channel,
+  .video-views-date {
+    font-size: 11px;
+  }
 }
 </style>

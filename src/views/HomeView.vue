@@ -25,13 +25,14 @@
                       autocomplete="off"
                   />
                   <button @click="searchVideos" class="yt-search-btn">
-                      <v-icon icon="mdi-magnify" size="large"></v-icon>
+                      <v-icon icon="mdi-magnify" class="search-icon"></v-icon>
                   </button>
               </div>
           </div>
 
           <div class="wip blink-warning header-right">
-              <i class="mdi mdi-alert"></i> Work in progress...
+              <i class="mdi mdi-alert"></i> 
+              <span class="wip-text">Work in progress...</span>
           </div>
       </header>
 
@@ -67,7 +68,7 @@
                       </div>
                       
                       <div class="yt-video-details">
-                          <v-avatar color="grey-darken-3" size="36" class="mr-3 mt-1 text-white">
+                          <v-avatar color="grey-darken-3" size="36" class="avatar-channel mr-3 mt-1 text-white">
                               <span class="text-caption text-uppercase font-weight-bold">
                                   {{ video.snippet?.channelTitle ? video.snippet.channelTitle.charAt(0) : 'Y' }}
                               </span>
@@ -140,7 +141,6 @@ export default {
       formatDuration(isoDuration) {
           if (!isoDuration) return '';
           
-          // ISO 8601 duration regex parser: PT#H#M#S
           const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
           if (!match) return '';
 
@@ -236,6 +236,7 @@ export default {
 .header-left {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .logo-container {
@@ -243,6 +244,7 @@ export default {
   align-items: center;
   cursor: pointer;
   user-select: none;
+  gap: 4px;
 }
 
 .logo-icon {
@@ -261,15 +263,16 @@ export default {
 .header-center {
   display: flex;
   align-items: center;
-  flex: 0 1 728px;
+  flex: 0 1 680px;
   margin: 0 16px;
+  min-width: 0; /* Prevents flex items from overflowing */
 }
 
 .search-wrapper {
   display: flex;
   width: 100%;
   border: 1px solid #303030;
-  border-radius: 40px 0 0 40px;
+  border-radius: 40px;
   background-color: #121212;
   overflow: hidden;
 }
@@ -277,7 +280,7 @@ export default {
 .yt-search-input {
   width: 100%;
   border: none;
-  font-size: 16px;
+  font-size: 15px;
   outline: none;
 }
 
@@ -285,11 +288,13 @@ export default {
   background-color: #222222;
   border: none;
   border-left: 1px solid #303030;
-  padding: 0 20px;
+  padding: 0 18px;
   cursor: pointer;
   display: flex;
   align-items: center;
+  justify-content: center;
   color: #f1f1f1;
+  flex-shrink: 0;
 }
 
 .yt-search-btn:hover {
@@ -300,6 +305,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .main-body {
@@ -310,7 +316,7 @@ export default {
 
 .wip {
   font-family: 'Playfair Display', serif;
-  font-size: 1.5rem;
+  font-size: 1.1rem;
   font-weight: bold;
 }
 
@@ -343,7 +349,7 @@ export default {
 .yt-video-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 40px 16px;
+  gap: 32px 16px;
 }
 
 .yt-video-card {
@@ -372,7 +378,6 @@ export default {
   opacity: 0.9;
 }
 
-/* Duration Overlay Badge */
 .duration-badge {
   position: absolute;
   bottom: 8px;
@@ -419,5 +424,104 @@ export default {
   font-size: 12px;
   color: #aaaaaa;
   margin: 2px 0 0 0;
+}
+
+/* ==========================================================================
+   RESPONSIVE MEDIA QUERIES
+   ========================================================================== */
+
+/* Tablets & Small Laptops (max-width: 768px) */
+@media (max-width: 768px) {
+  .yt-header {
+    padding: 0 12px;
+    height: 52px;
+  }
+
+  .header-center {
+    margin: 0 8px;
+  }
+
+  .yt-search-btn {
+    padding: 0 12px;
+  }
+
+  .wip {
+    font-size: 0.85rem;
+  }
+
+  .yt-content-feed {
+    padding: 16px 12px;
+  }
+
+  .yt-video-grid {
+    grid-template-columns: 1fr; /* Single column on tablets & mobile */
+    gap: 24px;
+  }
+}
+
+/* Mobile Devices (max-width: 480px) */
+@media (max-width: 480px) {
+  .yt-header {
+    padding: 0 8px;
+    height: 48px;
+  }
+
+  /* Hide the text part of the logo and WIP to save valuable space */
+  .logo-text {
+    display: none;
+  }
+
+  .wip-text {
+    display: none;
+  }
+
+  .wip {
+    font-size: 1.2rem; /* Keeps just the warning icon */
+  }
+
+  .header-center {
+    margin: 0 6px;
+    flex: 1;
+  }
+
+  .yt-search-input {
+    font-size: 14px;
+  }
+
+  .yt-search-btn {
+    padding: 0 10px;
+  }
+
+  /* YouTube Mobile-style edge-to-edge video layout */
+  .yt-content-feed {
+    padding: 0 0 20px 0;
+  }
+
+  .thumbnail-container {
+    border-radius: 0; /* Edge to edge thumbnails on phones */
+  }
+
+  .yt-video-details {
+    padding: 10px 12px 0 12px;
+  }
+
+  .avatar-channel {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  .yt-video-title {
+    font-size: 13.5px;
+    line-height: 18px;
+  }
+
+  .yt-channel-name, 
+  .yt-views-time {
+    font-size: 11.5px;
+  }
+
+  .yt-video-grid {
+    gap: 16px;
+  }
 }
 </style>
