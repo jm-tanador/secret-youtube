@@ -125,7 +125,7 @@ export default {
     enableMiniPlayer() {
       playerStore.setVideo(this.videoId, this.videoDetails);
       playerStore.minimize();
-      this.$router.back();
+      // this.$router.back();
     },
 
     // 2. Separate Window: popup window that bypasses Error 153 restrictions
