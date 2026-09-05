@@ -24,6 +24,13 @@
           <div v-if="isDragging" class="drag-overlay"></div>
 
           <!-- Embedded Video Player -->
+          <!-- <iframe
+              :src="`https://www.youtube-nocookie.com/embed/${videoId}`"
+              frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen
+              class="iframe-player"
+          ></iframe> -->
           <iframe
               :src="`https://www.youtube-nocookie.com/embed/${videoId}`"
               frameborder="0"
@@ -36,18 +43,29 @@
       <div class="content-wrapper">
           <!-- Main Video Details -->
           <div v-if="videoDetails" class="details-section">
-              <h1 class="title">{{ videoDetails.snippet?.title }}</h1>
-              
-              <div class="video-meta-bar">
-                  <span class="channel">{{ videoDetails.snippet?.channelTitle }}</span>
-                  <span class="meta-separator">•</span>
-                  <span class="meta-views">{{ formatViews(videoDetails.statistics?.viewCount) }}</span>
-                  <span class="meta-separator">•</span>
-                  <span class="meta-date">{{ formatDate(videoDetails.snippet?.publishedAt) }}</span>
-              </div>
+    <h1 class="title">
+        <span v-if="isLive" class="live-tag">LIVE</span>
+        {{ videoDetails.snippet?.title }}
+    </h1>
+    
+    <div class="video-meta-bar">
+        <span class="channel">{{ videoDetails.snippet?.channelTitle }}</span>
+        <span class="meta-separator">•</span>
+        
+        <!-- If live, show current watching count -->
+        <span v-if="isLive" class="live-watching">
+            {{ formatViews(videoDetails.liveStreamingDetails?.concurrentViewers) }} watching now
+        </span>
+        <span v-else class="meta-views">
+            {{ formatViews(videoDetails.statistics?.viewCount) }}
+        </span>
 
-              <p class="description">{{ videoDetails.snippet?.description }}</p>
-          </div>
+        <span class="meta-separator">•</span>
+        <span class="meta-date">{{ formatDate(videoDetails.snippet?.publishedAt) }}</span>
+    </div>
+
+    <p class="description">{{ videoDetails.snippet?.description }}</p>
+</div>
 
           <!-- RELATED VIDEOS SECTION -->
           <div class="related-section">
@@ -118,7 +136,10 @@ export default {
         height: `${this.floatHeight}px`,
         zIndex: '9999'
       };
-    }
+    },
+    isLive() {
+        return this.videoDetails?.snippet?.liveBroadcastContent === 'live';
+    },
   },
   watch: {
     '$route.params.id': {
@@ -277,6 +298,21 @@ export default {
 </script>
 
 <style scoped>
+.live-tag {
+  background-color: #cc0000;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.live-watching {
+  color: #ff4e45;
+  font-weight: 500;
+}
 .watch-container { 
   padding: 20px; 
   max-width: 1100px; 

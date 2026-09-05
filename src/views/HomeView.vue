@@ -52,36 +52,55 @@
                       class="yt-video-card"
                       @click="playVideo(getVideoId(video))"
                   >
-                      <div class="thumbnail-container">
-                          <img 
-                              :src="video.snippet?.thumbnails?.medium?.url || video.snippet?.thumbnails?.default?.url" 
-                              alt="thumbnail" 
-                              class="yt-thumbnail" 
-                          />
-                          <!-- DURATION BADGE -->
-                          <span 
-                              v-if="video.contentDetails?.duration" 
-                              class="duration-badge"
-                          >
-                              {{ formatDuration(video.contentDetails.duration) }}
-                          </span>
-                      </div>
-                      
-                      <div class="yt-video-details">
-                          <v-avatar color="grey-darken-3" size="36" class="avatar-channel mr-3 mt-1 text-white">
-                              <span class="text-caption text-uppercase font-weight-bold">
-                                  {{ video.snippet?.channelTitle ? video.snippet.channelTitle.charAt(0) : 'Y' }}
-                              </span>
-                          </v-avatar>
-                          <div class="details-metadata">
-                              <h3 class="yt-video-title">{{ decodeHtml(video.snippet?.title || '') }}</h3>
-                              <p class="yt-channel-name">{{ video.snippet?.channelTitle }}</p>
-                              <!-- Real Views & Date -->
-                              <p class="yt-views-time">
-                                  {{ formatViews(video.statistics?.viewCount) }} • {{ timeAgo(video.snippet?.publishedAt) }}
-                              </p>
-                          </div>
-                      </div>
+                      <!-- In HomeView.vue inside .yt-video-card -->
+
+<div class="thumbnail-container">
+    <img 
+        :src="video.snippet?.thumbnails?.medium?.url || video.snippet?.thumbnails?.default?.url" 
+        alt="thumbnail" 
+        class="yt-thumbnail" 
+    />
+    
+    <!-- LIVE BADGE (If currently live) -->
+    <span 
+        v-if="isLive(video)" 
+        class="live-badge"
+    >
+        <v-icon icon="mdi-broadcast" size="12" class="mr-1"></v-icon> LIVE
+    </span>
+
+    <!-- DURATION BADGE (Only if not live) -->
+    <span 
+        v-else-if="video.contentDetails?.duration && formatDuration(video.contentDetails.duration)" 
+        class="duration-badge"
+    >
+        {{ formatDuration(video.contentDetails.duration) }}
+    </span>
+</div>
+
+<div class="yt-video-details">
+    <v-avatar color="grey-darken-3" size="36" class="avatar-channel mr-3 mt-1 text-white">
+        <span class="text-caption text-uppercase font-weight-bold">
+            {{ video.snippet?.channelTitle ? video.snippet.channelTitle.charAt(0) : 'Y' }}
+        </span>
+    </v-avatar>
+    <div class="details-metadata">
+        <h3 class="yt-video-title">{{ decodeHtml(video.snippet?.title || '') }}</h3>
+        <p class="yt-channel-name">{{ video.snippet?.channelTitle }}</p>
+
+        <!-- Dynamic views display: shows watching count if live, regular views if not -->
+        <p class="yt-views-time">
+            <template v-if="isLive(video)">
+                <span class="live-indicator-dot">●</span> 
+                {{ formatConcurrentViewers(video.liveStreamingDetails?.concurrentViewers) }} watching
+            </template>
+            <template v-else>
+                {{ formatViews(video.statistics?.viewCount) }} • {{ timeAgo(video.snippet?.publishedAt) }}
+            </template>
+        </p>
+    </div>
+</div>
+
                   </div>
               </div>
           </main>
@@ -138,25 +157,46 @@ export default {
           txt.innerHTML = html;
           return txt.value;
       },
+      // Check if the item is currently live
+    isLive(video) {
+        return video.snippet?.liveBroadcastContent === 'live';
+    },
+
+    // Format concurrent viewers (e.g., "12.4K watching")
+    formatConcurrentViewers(viewers) {
+        if (!viewers) return 'LIVE';
+        const num = Number(viewers);
+        if (isNaN(num)) return 'LIVE';
+
+        if (num >= 1_000_000) {
+            return (num / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
+        }
+        if (num >= 1_000) {
+            return (num / 1_000).toFixed(1).replace(/\.0$/, '') + 'K';
+        }
+        return num.toLocaleString();
+    },
       formatDuration(isoDuration) {
-          if (!isoDuration) return '';
-          
-          const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-          if (!match) return '';
+        if (!isoDuration || isoDuration === 'P0D') return '';
+        
+        const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+        if (!match) return '';
 
-          const hours = parseInt(match[1] || 0, 10);
-          const minutes = parseInt(match[2] || 0, 10);
-          const seconds = parseInt(match[3] || 0, 10);
+        const hours = parseInt(match[1] || 0, 10);
+        const minutes = parseInt(match[2] || 0, 10);
+        const seconds = parseInt(match[3] || 0, 10);
 
-          const formattedSeconds = seconds.toString().padStart(2, '0');
+        if (hours === 0 && minutes === 0 && seconds === 0) return '';
 
-          if (hours > 0) {
-              const formattedMinutes = minutes.toString().padStart(2, '0');
-              return `${hours}:${formattedMinutes}:${formattedSeconds}`;
-          }
+        const formattedSeconds = seconds.toString().padStart(2, '0');
 
-          return `${minutes}:${formattedSeconds}`;
-      },
+        if (hours > 0) {
+            const formattedMinutes = minutes.toString().padStart(2, '0');
+            return `${hours}:${formattedMinutes}:${formattedSeconds}`;
+        }
+
+        return `${minutes}:${formattedSeconds}`;
+    },
       formatViews(views) {
           if (views === undefined || views === null || views === '') return 'No views';
           const num = Number(views);
@@ -197,7 +237,8 @@ export default {
               }
           }
           return 'Just now';
-      }
+      },
+
   },
   mounted() {
       const queryParam = this.$route.query.search_query;
@@ -212,6 +253,29 @@ export default {
 </script>
 
 <style scoped>
+/* Live badge styling */
+.live-badge {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background-color: #cc0000;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  user-select: none;
+}
+
+.live-indicator-dot {
+  color: #cc0000;
+  font-size: 10px;
+  vertical-align: middle;
+  margin-right: 2px;
+}
 .yt-app-layout {
   display: flex;
   flex-direction: column;
