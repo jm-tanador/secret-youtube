@@ -1,39 +1,23 @@
 <template>
   <div class="watch-container">
     <div class="top-nav-actions">
-      <button @click="$router.back()" class="back-button">← Back</button>
+      <button @click="goBack" class="back-button">← Back</button>
       
-      <!-- Native OS Floating Window (Cross-tab & Outside Browser) -->
-      <button 
-        v-if="supportsDocPiP" 
-        @click="togglePictureInPicture" 
-        class="pip-toggle-btn"
-      >
-        {{ isPipActive ? '✕ Close Floating Window' : '⧉ Float Window' }}
+      <!-- Pop-out Window (Separate clean window without Error 153) -->
+      <button @click="openPopoutWindow" class="pip-toggle-btn">
+        ⧉ Pop-out Window
       </button>
 
-      <!-- In-Page Mini Player (Within the Tab) -->
-      <button @click="toggleInPageDock" class="dock-toggle-btn">
-        {{ isDocked ? 'Dock Video' : 'Mini Player' }}
+      <!-- Mini Player (YouTube style floating player while browsing) -->
+      <button @click="enableMiniPlayer" class="dock-toggle-btn">
+        ⚡ Mini Player
       </button>
     </div>
     
     <!-- Player container -->
-    <div 
-      class="player-wrapper" 
-      :class="{ 'is-docked': isDocked }"
-    >
-      <!-- Standby message shown when video is floating outside -->
-      <div v-if="isPipActive" class="pip-standby-screen">
-        <v-icon icon="mdi-picture-in-picture-bottom-right" size="40" class="mb-2 text-grey"></v-icon>
-        <p>Playing in floating window</p>
-        <button @click="closePip" class="restore-btn">Return to page</button>
-      </div>
-
-      <!-- Main iframe player -->
+    <div class="player-wrapper">
       <iframe
-        v-show="!isPipActive"
-        :src="mainIframeSrc"
+        :src="`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`"
         frameborder="0"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         allowfullscreen
@@ -109,6 +93,7 @@
 
 <script>
 import axios from 'axios';
+import { playerStore } from '../playerStore';
 
 export default {
   data() {
@@ -116,23 +101,12 @@ export default {
       videoId: this.$route.params.id,
       videoDetails: null,
       relatedVideos: [],
-      isLoadingRelated: false,
-      isDocked: false,
-      isPipActive: false,
-      pipWindow: null,
-      supportsDocPiP: false
+      isLoadingRelated: false
     };
   },
   computed: {
     isLive() {
       return this.videoDetails?.snippet?.liveBroadcastContent === 'live';
-    },
-    currentOrigin() {
-      return typeof window !== 'undefined' ? window.location.origin : '';
-    },
-    mainIframeSrc() {
-      // Must have enablejsapi=1 & origin to avoid Error 153/150
-      return `https://www.youtube-nocookie.com/embed/${this.videoId}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(this.currentOrigin)}`;
     }
   },
   watch: {
@@ -141,74 +115,36 @@ export default {
       handler(newId) {
         if (newId) {
           this.videoId = newId;
-          this.closePip();
           this.loadVideoData();
         }
       }
     }
   },
-  mounted() {
-    this.supportsDocPiP = 'documentPictureInPicture' in window;
-  },
-  beforeUnmount() {
-    this.closePip();
-  },
   methods: {
-    async togglePictureInPicture() {
-      if (this.isPipActive) {
-        this.closePip();
-        return;
-      }
-
-      try {
-        // Request the floating PiP window
-        this.pipWindow = await window.documentPictureInPicture.requestWindow({
-          width: 480,
-          height: 270,
-        });
-
-        const doc = this.pipWindow.document;
-
-        // Reset document margins
-        doc.body.style.margin = '0';
-        doc.body.style.backgroundColor = '#000000';
-        doc.body.style.display = 'flex';
-        doc.body.style.width = '100vw';
-        doc.body.style.height = '100vh';
-        doc.body.style.overflow = 'hidden';
-
-        // Create a dedicated clean iframe inside the PiP window to prevent Error 153
-        const pipIframe = doc.createElement('iframe');
-        pipIframe.src = `https://www.youtube-nocookie.com/embed/${this.videoId}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(this.currentOrigin)}`;
-        pipIframe.style.width = '100%';
-        pipIframe.style.height = '100%';
-        pipIframe.style.border = 'none';
-        pipIframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
-        pipIframe.setAttribute('allowfullscreen', 'true');
-
-        doc.body.appendChild(pipIframe);
-        this.isPipActive = true;
-
-        // Listen for when the user closes the floating window
-        this.pipWindow.addEventListener('pagehide', () => {
-          this.isPipActive = false;
-          this.pipWindow = null;
-        });
-      } catch (err) {
-        console.error("Failed to open floating window:", err);
-      }
+    // 1. YouTube-style Mini Player: shrinks video to corner & goes back to previous page
+    enableMiniPlayer() {
+      playerStore.setVideo(this.videoId, this.videoDetails);
+      playerStore.minimize();
+      this.$router.back();
     },
 
-    closePip() {
-      if (this.pipWindow) {
-        this.pipWindow.close();
-        this.pipWindow = null;
-        this.isPipActive = false;
-      }
+    // 2. Separate Window: popup window that bypasses Error 153 restrictions
+    openPopoutWindow() {
+      const url = `https://www.youtube-nocookie.com/embed/${this.videoId}?autoplay=1`;
+      const width = 640;
+      const height = 360;
+      const left = window.screen.width - width - 20;
+      const top = window.screen.height - height - 80;
+
+      window.open(
+        url,
+        'EbutuoyMiniPlayer',
+        `width=${width},height=${height},left=${left},top=${top},menubar=no,status=no,titlebar=no,toolbar=no`
+      );
     },
 
-    toggleInPageDock() {
-      this.isDocked = !this.isDocked;
+    goBack() {
+      this.$router.back();
     },
 
     async loadVideoData() {
@@ -250,7 +186,6 @@ export default {
       return video.id || '';
     },
     playVideo(id) {
-      this.closePip();
       this.$router.push(`/watch/${id}`);
     },
     formatViews(views) {
@@ -336,7 +271,6 @@ export default {
   background-color: #3f3f3f;
 }
 
-/* Player Wrapper */
 .player-wrapper { 
   position: relative; 
   width: 100%; 
@@ -345,45 +279,6 @@ export default {
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid #272727;
-  transition: all 0.3s ease;
-}
-
-.pip-standby-screen {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: #aaaaaa;
-  font-size: 14px;
-}
-
-.restore-btn {
-  margin-top: 10px;
-  padding: 6px 14px;
-  background-color: #272727;
-  border: 1px solid #444;
-  color: #fff;
-  border-radius: 14px;
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.restore-btn:hover {
-  background-color: #3a3a3a;
-}
-
-/* In-Page Mini Player Mode */
-.player-wrapper.is-docked {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  width: 320px;
-  height: 180px;
-  aspect-ratio: unset;
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.85);
-  z-index: 9999;
 }
 
 .iframe-player { 
@@ -565,13 +460,6 @@ export default {
 
   .video-info {
     flex: 1;
-  }
-
-  .player-wrapper.is-docked {
-    width: 220px;
-    height: 124px;
-    bottom: 12px;
-    right: 12px;
   }
 }
 </style>
