@@ -3,37 +3,35 @@
     <div class="top-nav-actions">
       <button @click="$router.back()" class="back-button">← Back</button>
       
-      <!-- Native OS-level Picture-in-Picture Button -->
+      <!-- Native OS Floating Window (Cross-tab & Outside Browser) -->
       <button 
-        v-if="supportsPiP" 
+        v-if="supportsDocPiP" 
         @click="togglePictureInPicture" 
         class="pip-toggle-btn"
       >
-        {{ isPipActive ? '✕ Close Floating Window' : '⧉ Float Window (PiP)' }}
+        {{ isPipActive ? '✕ Close Floating Window' : '⧉ Float Window' }}
       </button>
 
-      <!-- In-Page Dock (CSS floating) -->
+      <!-- In-Page Mini Player (Within the Tab) -->
       <button @click="toggleInPageDock" class="dock-toggle-btn">
-        {{ isDocked ? 'Dock Player' : 'Mini Player' }}
+        {{ isDocked ? 'Dock Video' : 'Mini Player' }}
       </button>
     </div>
-
-    <!-- Hidden video element synced to allow browser-level PiP outside the app -->
-    <video 
-      ref="pipVideo" 
-      class="hidden-pip-video" 
-      playsinline 
-      muted 
-      autoplay
-    ></video>
     
     <!-- Player container -->
     <div 
+      ref="playerContainer"
       class="player-wrapper" 
       :class="{ 'is-docked': isDocked }"
     >
-      <!-- Embedded YouTube Iframe Player Container -->
-      <div id="youtube-player" class="iframe-player"></div>
+      <iframe
+        ref="playerIframe"
+        :src="`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`"
+        frameborder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowfullscreen
+        class="iframe-player"
+      ></iframe>
     </div>
 
     <div class="content-wrapper">
@@ -114,10 +112,8 @@ export default {
       isLoadingRelated: false,
       isDocked: false,
       isPipActive: false,
-      supportsPiP: false,
-      player: null, // YouTube IFrame Player Instance
-      pipCanvas: null,
-      pipStream: null
+      pipWindow: null,
+      supportsDocPiP: false
     };
   },
   computed: {
@@ -132,107 +128,66 @@ export default {
         if (newId) {
           this.videoId = newId;
           this.loadVideoData();
-          if (this.player && typeof this.player.loadVideoById === 'function') {
-            this.player.loadVideoById(newId);
-          } else {
-            this.initYouTubePlayer();
-          }
         }
       }
     }
   },
   mounted() {
-    // Check if browser supports native Picture-in-Picture
-    this.supportsPiP = 'pictureInPictureEnabled' in document;
-
-    this.initYouTubePlayer();
-
-    if (this.$refs.pipVideo) {
-      this.$refs.pipVideo.addEventListener('leavepictureinpicture', () => {
-        this.isPipActive = false;
-      });
-    }
+    // Check if the browser supports Document Picture-in-Picture API
+    this.supportsDocPiP = 'documentPictureInPicture' in window;
   },
   beforeUnmount() {
-    if (document.pictureInPictureElement) {
-      document.exitPictureInPicture().catch(() => {});
-    }
-    if (this.player && typeof this.player.destroy === 'function') {
-      this.player.destroy();
-    }
+    this.closePip();
   },
   methods: {
-    initYouTubePlayer() {
-      if (!window.YT) {
-        const tag = document.createElement('script');
-        tag.src = `https://www.youtube-nocookie.com/embed/${this.videoId}`;
-        const firstScriptTag = document.getElementsByTagName('script')[0];
-        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-
-        window.onYouTubeIframeAPIReady = () => {
-          this.createPlayer();
-        };
-      } else {
-        this.createPlayer();
-      }
-    },
-    createPlayer() {
-      if (this.player) return;
-
-      this.player = new window.YT.Player('youtube-player', {
-        videoId: this.videoId,
-        playerVars: {
-          autoplay: 1,
-          playsinline: 1,
-          modestbranding: 1,
-          rel: 0
-        },
-        events: {
-          onReady: () => {
-            this.setupPipStream();
-          }
-        }
-      });
-    },
-
-    // Set up canvas capture stream to feed into native Picture-in-Picture
-    setupPipStream() {
-      if (!this.supportsPiP) return;
-
-      const canvas = document.createElement('canvas');
-      canvas.width = 640;
-      canvas.height = 360;
-      const ctx = canvas.getContext('2d');
-
-      // Draw poster background
-      ctx.fillStyle = '#0f0f0f';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '20px Roboto, Arial';
-      ctx.fillText('Playing YouTube Video', 220, 180);
-
-      this.pipCanvas = canvas;
-      this.pipStream = canvas.captureStream(30);
-
-      if (this.$refs.pipVideo) {
-        this.$refs.pipVideo.srcObject = this.pipStream;
-        this.$refs.pipVideo.play().catch(() => {});
-      }
-    },
-
-    // True OS-level floating window (works outside browser / in other apps)
+    // OS-level PiP that allows you to leave the tab and use other desktop apps
     async togglePictureInPicture() {
+      if (this.isPipActive) {
+        this.closePip();
+        return;
+      }
+
+      const iframe = this.$refs.playerIframe;
+      const container = this.$refs.playerContainer;
+      if (!iframe || !container) return;
+
       try {
-        if (document.pictureInPictureElement) {
-          await document.exitPictureInPicture();
+        // Open standalone always-on-top desktop window
+        this.pipWindow = await window.documentPictureInPicture.requestWindow({
+          width: 480,
+          height: 270,
+        });
+
+        // Set basic dark mode styling on the new window
+        this.pipWindow.document.body.style.margin = '0';
+        this.pipWindow.document.body.style.backgroundColor = '#000';
+        this.pipWindow.document.body.style.overflow = 'hidden';
+
+        iframe.style.width = '100vw';
+        iframe.style.height = '100vh';
+
+        // Move the iframe into the OS window without reloading it
+        this.pipWindow.document.body.append(iframe);
+        this.isPipActive = true;
+
+        // When user closes the PiP window, return iframe back to original spot
+        this.pipWindow.addEventListener('pagehide', () => {
+          iframe.style.width = '100%';
+          iframe.style.height = '100%';
+          container.append(iframe);
           this.isPipActive = false;
-        } else if (this.$refs.pipVideo) {
-          await this.$refs.pipVideo.play();
-          await this.$refs.pipVideo.requestPictureInPicture();
-          this.isPipActive = true;
-        }
+          this.pipWindow = null;
+        });
       } catch (err) {
-        console.error("Picture-in-Picture error:", err);
+        console.error("Failed to open Document Picture-in-Picture:", err);
+      }
+    },
+
+    closePip() {
+      if (this.pipWindow) {
+        this.pipWindow.close();
+        this.pipWindow = null;
+        this.isPipActive = false;
       }
     },
 
@@ -280,6 +235,7 @@ export default {
       return video.id || '';
     },
     playVideo(id) {
+      this.closePip();
       this.$router.push(`/watch/${id}`);
     },
     formatViews(views) {
@@ -365,15 +321,6 @@ export default {
   background-color: #3f3f3f;
 }
 
-/* Hidden Video for PiP */
-.hidden-pip-video {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
-
 /* Player Wrapper */
 .player-wrapper { 
   position: relative; 
@@ -386,7 +333,7 @@ export default {
   transition: all 0.3s ease;
 }
 
-/* YouTube In-Page Mini Player Mode */
+/* In-Page Mini Player Mode */
 .player-wrapper.is-docked {
   position: fixed;
   bottom: 20px;
@@ -551,7 +498,7 @@ export default {
   padding: 16px 0;
 }
 
-/* Responsiveness */
+/* Responsive */
 @media (max-width: 768px) {
   .watch-container {
     padding: 12px;
