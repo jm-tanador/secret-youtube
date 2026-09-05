@@ -1,109 +1,104 @@
 <template>
   <div class="watch-container">
-      <div class="top-nav-actions">
-          <button @click="$router.back()" class="back-button">← Back</button>
-          <button @click="toggleFloat" class="float-toggle-btn">
-              {{ isFloating ? '✕ Dock Video' : '⚡ Float Video' }}
-          </button>
-      </div>
+    <div class="top-nav-actions">
+      <button @click="$router.back()" class="back-button">← Back</button>
       
-      <!-- The player wrapper handles drag events when isFloating is active -->
-      <div 
-          class="player-wrapper" 
-          :class="{ 'is-floating': isFloating }"
-          :style="floatingStyle"
-          @mousedown="onMouseDown"
+      <!-- Native OS-level Picture-in-Picture Button -->
+      <button 
+        v-if="supportsPiP" 
+        @click="togglePictureInPicture" 
+        class="pip-toggle-btn"
       >
-          <!-- Drag Handle Bar (only visible when floating) -->
-          <div v-if="isFloating" class="drag-handle">
-              <span class="handle-title">Drag to move</span>
-              <button @click.stop="toggleFloat" class="close-float-btn">✕ Dock</button>
-          </div>
+        {{ isPipActive ? '✕ Close Floating Window' : '⧉ Float Window (PiP)' }}
+      </button>
 
-          <!-- Cover overlay used when dragging -->
-          <div v-if="isDragging" class="drag-overlay"></div>
-
-          <!-- Embedded Video Player -->
-          <!-- <iframe
-              :src="`https://www.youtube-nocookie.com/embed/${videoId}`"
-              frameborder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowfullscreen
-              class="iframe-player"
-          ></iframe> -->
-          <iframe
-              :src="`https://www.youtube-nocookie.com/embed/${videoId}`"
-              frameborder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowfullscreen
-              class="iframe-player"
-          ></iframe>
-      </div>
-
-      <div class="content-wrapper">
-          <!-- Main Video Details -->
-          <div v-if="videoDetails" class="details-section">
-    <h1 class="title">
-        <span v-if="isLive" class="live-tag">LIVE</span>
-        {{ videoDetails.snippet?.title }}
-    </h1>
-    
-    <div class="video-meta-bar">
-        <span class="channel">{{ videoDetails.snippet?.channelTitle }}</span>
-        <span class="meta-separator">•</span>
-        
-        <!-- If live, show current watching count -->
-        <span v-if="isLive" class="live-watching">
-            {{ formatViews(videoDetails.liveStreamingDetails?.concurrentViewers) }} watching now
-        </span>
-        <span v-else class="meta-views">
-            {{ formatViews(videoDetails.statistics?.viewCount) }}
-        </span>
-
-        <span class="meta-separator">•</span>
-        <span class="meta-date">{{ formatDate(videoDetails.snippet?.publishedAt) }}</span>
+      <!-- In-Page Dock (CSS floating) -->
+      <button @click="toggleInPageDock" class="dock-toggle-btn">
+        {{ isDocked ? 'Dock Player' : 'Mini Player' }}
+      </button>
     </div>
 
-    <p class="description">{{ videoDetails.snippet?.description }}</p>
-</div>
+    <!-- Hidden video element synced to allow browser-level PiP outside the app -->
+    <video 
+      ref="pipVideo" 
+      class="hidden-pip-video" 
+      playsinline 
+      muted 
+      autoplay
+    ></video>
+    
+    <!-- Player container -->
+    <div 
+      class="player-wrapper" 
+      :class="{ 'is-docked': isDocked }"
+    >
+      <!-- Embedded YouTube Iframe Player Container -->
+      <div id="youtube-player" class="iframe-player"></div>
+    </div>
 
-          <!-- RELATED VIDEOS SECTION -->
-          <div class="related-section">
-              <h2 class="related-title">Related Videos</h2>
-              
-              <div v-if="isLoadingRelated" class="loading-state">
-                  Loading recommendations...
-              </div>
+    <div class="content-wrapper">
+      <!-- Main Video Details -->
+      <div v-if="videoDetails" class="details-section">
+        <h1 class="title">
+          <span v-if="isLive" class="live-tag">LIVE</span>
+          {{ videoDetails.snippet?.title }}
+        </h1>
+        
+        <div class="video-meta-bar">
+          <span class="channel">{{ videoDetails.snippet?.channelTitle }}</span>
+          <span class="meta-separator">•</span>
+          
+          <span v-if="isLive" class="live-watching">
+            {{ formatViews(videoDetails.liveStreamingDetails?.concurrentViewers) }} watching now
+          </span>
+          <span v-else class="meta-views">
+            {{ formatViews(videoDetails.statistics?.viewCount) }}
+          </span>
 
-              <div v-else-if="relatedVideos.length > 0" class="related-grid">
-                  <div 
-                      v-for="video in relatedVideos" 
-                      :key="getVideoId(video)" 
-                      class="related-card"
-                      @click="playVideo(getVideoId(video))"
-                  >
-                      <div class="thumbnail-wrapper">
-                          <img 
-                              :src="video.snippet?.thumbnails?.medium?.url || video.snippet?.thumbnails?.default?.url" 
-                              :alt="video.snippet?.title" 
-                              class="thumbnail-img" 
-                          />
-                      </div>
-                      <div class="video-info">
-                          <h3 class="video-title">{{ video.snippet?.title }}</h3>
-                          <p class="video-channel">{{ video.snippet?.channelTitle }}</p>
-                          <p class="video-views-date">
-                              {{ formatViews(video.statistics?.viewCount) }} • {{ timeAgo(video.snippet?.publishedAt) }}
-                          </p>
-                      </div>
-                  </div>
-              </div>
+          <span class="meta-separator">•</span>
+          <span class="meta-date">{{ formatDate(videoDetails.snippet?.publishedAt) }}</span>
+        </div>
 
-              <div v-else class="no-videos">
-                  No related videos found.
-              </div>
-          </div>
+        <p class="description">{{ videoDetails.snippet?.description }}</p>
       </div>
+
+      <!-- RELATED VIDEOS SECTION -->
+      <div class="related-section">
+        <h2 class="related-title">Related Videos</h2>
+        
+        <div v-if="isLoadingRelated" class="loading-state">
+          Loading recommendations...
+        </div>
+
+        <div v-else-if="relatedVideos.length > 0" class="related-grid">
+          <div 
+            v-for="video in relatedVideos" 
+            :key="getVideoId(video)" 
+            class="related-card"
+            @click="playVideo(getVideoId(video))"
+          >
+            <div class="thumbnail-wrapper">
+              <img 
+                :src="video.snippet?.thumbnails?.medium?.url || video.snippet?.thumbnails?.default?.url" 
+                :alt="video.snippet?.title" 
+                class="thumbnail-img" 
+              />
+            </div>
+            <div class="video-info">
+              <h3 class="video-title">{{ video.snippet?.title }}</h3>
+              <p class="video-channel">{{ video.snippet?.channelTitle }}</p>
+              <p class="video-views-date">
+                {{ formatViews(video.statistics?.viewCount) }} • {{ timeAgo(video.snippet?.publishedAt) }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="no-videos">
+          No related videos found.
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -117,29 +112,18 @@ export default {
       videoDetails: null,
       relatedVideos: [],
       isLoadingRelated: false,
-      isFloating: false,
-      isDragging: false,
-      position: { x: 0, y: 0 },
-      dragStart: { x: 0, y: 0 },
-      floatWidth: 280,
-      floatHeight: 158
+      isDocked: false,
+      isPipActive: false,
+      supportsPiP: false,
+      player: null, // YouTube IFrame Player Instance
+      pipCanvas: null,
+      pipStream: null
     };
   },
   computed: {
-    floatingStyle() {
-      if (!this.isFloating) return {};
-      return {
-        position: 'fixed',
-        left: `${this.position.x}px`,
-        top: `${this.position.y}px`,
-        width: `${this.floatWidth}px`,
-        height: `${this.floatHeight}px`,
-        zIndex: '9999'
-      };
-    },
     isLive() {
-        return this.videoDetails?.snippet?.liveBroadcastContent === 'live';
-    },
+      return this.videoDetails?.snippet?.liveBroadcastContent === 'live';
+    }
   },
   watch: {
     '$route.params.id': {
@@ -148,11 +132,115 @@ export default {
         if (newId) {
           this.videoId = newId;
           this.loadVideoData();
+          if (this.player && typeof this.player.loadVideoById === 'function') {
+            this.player.loadVideoById(newId);
+          } else {
+            this.initYouTubePlayer();
+          }
         }
       }
     }
   },
+  mounted() {
+    // Check if browser supports native Picture-in-Picture
+    this.supportsPiP = 'pictureInPictureEnabled' in document;
+
+    this.initYouTubePlayer();
+
+    if (this.$refs.pipVideo) {
+      this.$refs.pipVideo.addEventListener('leavepictureinpicture', () => {
+        this.isPipActive = false;
+      });
+    }
+  },
+  beforeUnmount() {
+    if (document.pictureInPictureElement) {
+      document.exitPictureInPicture().catch(() => {});
+    }
+    if (this.player && typeof this.player.destroy === 'function') {
+      this.player.destroy();
+    }
+  },
   methods: {
+    initYouTubePlayer() {
+      if (!window.YT) {
+        const tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        const firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+        window.onYouTubeIframeAPIReady = () => {
+          this.createPlayer();
+        };
+      } else {
+        this.createPlayer();
+      }
+    },
+    createPlayer() {
+      if (this.player) return;
+
+      this.player = new window.YT.Player('youtube-player', {
+        videoId: this.videoId,
+        playerVars: {
+          autoplay: 1,
+          playsinline: 1,
+          modestbranding: 1,
+          rel: 0
+        },
+        events: {
+          onReady: () => {
+            this.setupPipStream();
+          }
+        }
+      });
+    },
+
+    // Set up canvas capture stream to feed into native Picture-in-Picture
+    setupPipStream() {
+      if (!this.supportsPiP) return;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 640;
+      canvas.height = 360;
+      const ctx = canvas.getContext('2d');
+
+      // Draw poster background
+      ctx.fillStyle = '#0f0f0f';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '20px Roboto, Arial';
+      ctx.fillText('Playing YouTube Video', 220, 180);
+
+      this.pipCanvas = canvas;
+      this.pipStream = canvas.captureStream(30);
+
+      if (this.$refs.pipVideo) {
+        this.$refs.pipVideo.srcObject = this.pipStream;
+        this.$refs.pipVideo.play().catch(() => {});
+      }
+    },
+
+    // True OS-level floating window (works outside browser / in other apps)
+    async togglePictureInPicture() {
+      try {
+        if (document.pictureInPictureElement) {
+          await document.exitPictureInPicture();
+          this.isPipActive = false;
+        } else if (this.$refs.pipVideo) {
+          await this.$refs.pipVideo.play();
+          await this.$refs.pipVideo.requestPictureInPicture();
+          this.isPipActive = true;
+        }
+      } catch (err) {
+        console.error("Picture-in-Picture error:", err);
+      }
+    },
+
+    // In-page mini player toggle
+    toggleInPageDock() {
+      this.isDocked = !this.isDocked;
+    },
+
     async loadVideoData() {
       await this.fetchVideoDetails();
       await this.fetchRelatedVideos();
@@ -171,7 +259,6 @@ export default {
       this.isLoadingRelated = true;
       try {
         const searchQuery = this.videoDetails?.snippet?.channelTitle || 'trending';
-
         const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/search`, {
           params: { q: searchQuery }
         });
@@ -193,46 +280,21 @@ export default {
       return video.id || '';
     },
     playVideo(id) {
-      if (this.isFloating) {
-        this.isFloating = false;
-      }
       this.$router.push(`/watch/${id}`);
     },
-    toggleFloat() {
-      this.isFloating = !this.isFloating;
-      if (this.isFloating) {
-        // Adapt float dimensions on smaller screens
-        if (window.innerWidth < 600) {
-          this.floatWidth = 200;
-          this.floatHeight = 112;
-        } else {
-          this.floatWidth = 280;
-          this.floatHeight = 158;
-        }
-        this.position.x = window.innerWidth - this.floatWidth - 16;
-        this.position.y = window.innerHeight - this.floatHeight - 16;
-      }
-    },
     formatViews(views) {
-      if (views === undefined || views === null || views === '') return 'No views';
+      if (!views) return 'No views';
       const num = Number(views);
       if (isNaN(num)) return '0 views';
 
-      if (num >= 1_000_000_000) {
-        return (num / 1_000_000_000).toFixed(1).replace(/\.0$/, '') + 'B views';
-      }
-      if (num >= 1_000_000) {
-        return (num / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M views';
-      }
-      if (num >= 1_000) {
-        return (num / 1_000).toFixed(1).replace(/\.0$/, '') + 'K views';
-      }
-      return `${num} ${num === 1 ? 'view' : 'views'}`;
+      if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(1).replace(/\.0$/, '') + 'B views';
+      if (num >= 1_000_000) return (num / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M views';
+      if (num >= 1_000) return (num / 1_000).toFixed(1).replace(/\.0$/, '') + 'K views';
+      return `${num} views`;
     },
     formatDate(dateString) {
       if (!dateString) return '';
-      const date = new Date(dateString);
-      return date.toLocaleDateString(undefined, {
+      return new Date(dateString).toLocaleDateString(undefined, {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
@@ -240,10 +302,7 @@ export default {
     },
     timeAgo(dateString) {
       if (!dateString) return '';
-      const date = new Date(dateString);
-      const now = new Date();
-      const seconds = Math.floor((now - date) / 1000);
-
+      const seconds = Math.floor((new Date() - new Date(dateString)) / 1000);
       if (seconds < 60) return 'Just now';
 
       const intervals = [
@@ -257,62 +316,15 @@ export default {
 
       for (const interval of intervals) {
         const count = Math.floor(seconds / interval.seconds);
-        if (count >= 1) {
-          return `${count} ${interval.label}${count > 1 ? 's' : ''} ago`;
-        }
+        if (count >= 1) return `${count} ${interval.label}${count > 1 ? 's' : ''} ago`;
       }
       return 'Just now';
-    },
-    onMouseDown(e) {
-      if (!this.isFloating) return;
-      if (e.target.closest('.close-float-btn')) return;
-
-      this.isDragging = true;
-      this.dragStart.x = e.clientX - this.position.x;
-      this.dragStart.y = e.clientY - this.position.y;
-
-      window.addEventListener('mousemove', this.onMouseMove);
-      window.addEventListener('mouseup', this.onMouseUp);
-    },
-    onMouseMove(e) {
-      if (!this.isDragging) return;
-
-      const newX = e.clientX - this.dragStart.x;
-      const newY = e.clientY - this.dragStart.y;
-      const padding = 10;
-
-      this.position.x = Math.max(padding, Math.min(window.innerWidth - this.floatWidth - padding, newX));
-      this.position.y = Math.max(padding, Math.min(window.innerHeight - this.floatHeight - padding, newY));
-    },
-    onMouseUp() {
-      this.isDragging = false;
-      window.removeEventListener('mousemove', this.onMouseMove);
-      window.removeEventListener('mouseup', this.onMouseUp);
     }
-  },
-  beforeUnmount() {
-    window.removeEventListener('mousemove', this.onMouseMove);
-    window.removeEventListener('mouseup', this.onMouseUp);
   }
 };
 </script>
 
 <style scoped>
-.live-tag {
-  background-color: #cc0000;
-  color: #ffffff;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
-  margin-right: 8px;
-  vertical-align: middle;
-}
-
-.live-watching {
-  color: #ff4e45;
-  font-weight: 500;
-}
 .watch-container { 
   padding: 20px; 
   max-width: 1100px; 
@@ -328,7 +340,7 @@ export default {
   gap: 10px;
 }
 
-.back-button, .float-toggle-btn { 
+.back-button, .pip-toggle-btn, .dock-toggle-btn { 
   padding: 8px 16px; 
   cursor: pointer; 
   background-color: #272727;
@@ -337,14 +349,32 @@ export default {
   border-radius: 18px;
   font-size: 13px;
   font-weight: 500;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
-.back-button:hover, .float-toggle-btn:hover {
+.pip-toggle-btn {
+  background-color: #1e3a8a;
+  border-color: #3b82f6;
+}
+
+.pip-toggle-btn:hover {
+  background-color: #2563eb;
+}
+
+.back-button:hover, .dock-toggle-btn:hover {
   background-color: #3f3f3f;
 }
 
-/* Fluid, Aspect Ratio-based Player */
+/* Hidden Video for PiP */
+.hidden-pip-video {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Player Wrapper */
 .player-wrapper { 
   position: relative; 
   width: 100%; 
@@ -353,49 +383,20 @@ export default {
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid #272727;
+  transition: all 0.3s ease;
 }
 
-.player-wrapper.is-floating {
+/* YouTube In-Page Mini Player Mode */
+.player-wrapper.is-docked {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 320px;
+  height: 180px;
+  aspect-ratio: unset;
   border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.7);
-  display: flex;
-  flex-direction: column;
-  aspect-ratio: unset; /* allows custom drag sizes */
-}
-
-.drag-handle {
-  background-color: #272727;
-  color: #f1f1f1;
-  padding: 4px 10px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: move;
-  font-size: 11px;
-  user-select: none;
-  border-bottom: 1px solid #3f3f3f;
-}
-
-.close-float-btn {
-  background: none;
-  border: none;
-  color: #aaaaaa;
-  cursor: pointer;
-  font-size: 11px;
-}
-
-.close-float-btn:hover {
-  color: #ffffff;
-}
-
-.drag-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 10;
-  background: transparent;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.85);
+  z-index: 9999;
 }
 
 .iframe-player { 
@@ -403,7 +404,6 @@ export default {
   height: 100%; 
   border: none;
   display: block;
-  flex: 1;
 }
 
 .content-wrapper {
@@ -421,6 +421,22 @@ export default {
   line-height: 1.4;
   margin-bottom: 8px; 
   color: #f1f1f1;
+}
+
+.live-tag {
+  background-color: #cc0000;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.live-watching {
+  color: #ff4e45;
+  font-weight: 500;
 }
 
 .video-meta-bar {
@@ -503,7 +519,7 @@ export default {
 .video-info {
   display: flex;
   flex-direction: column;
-  min-width: 0; /* Prevents overflow in flex */
+  min-width: 0;
 }
 
 .video-title {
@@ -535,17 +551,12 @@ export default {
   padding: 16px 0;
 }
 
-/* ==========================================================================
-   RESPONSIVE MEDIA QUERIES
-   ========================================================================== */
-
-/* Tablets and below (max-width: 768px) */
+/* Responsiveness */
 @media (max-width: 768px) {
   .watch-container {
     padding: 12px;
   }
 
-  /* Switch related videos to YouTube-style horizontal rows */
   .related-grid {
     display: flex;
     flex-direction: column;
@@ -569,64 +580,12 @@ export default {
   .video-info {
     flex: 1;
   }
-}
 
-/* Mobile Screens (max-width: 480px) */
-@media (max-width: 480px) {
-  .watch-container {
-    padding: 0 0 24px 0; /* Edge to edge video container */
-  }
-
-  .top-nav-actions {
-    padding: 8px 12px;
-    margin-bottom: 0;
-  }
-
-  .back-button, .float-toggle-btn {
-    font-size: 12px;
-    padding: 6px 12px;
-  }
-
-  /* Full-bleed edge-to-edge player on phone screens */
-  .player-wrapper {
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
-  }
-
-  /* Restore comfortable padding for content underneath the player */
-  .content-wrapper {
-    padding: 0 12px;
-  }
-
-  .title {
-    font-size: 16px;
-    margin-top: 8px;
-  }
-
-  .video-meta-bar {
-    font-size: 12px;
-    gap: 4px;
-  }
-
-  .description {
-    font-size: 12.5px;
-    padding: 10px 12px;
-  }
-
-  .thumbnail-wrapper {
-    width: 120px;
-    min-width: 120px;
-  }
-
-  .video-title {
-    font-size: 12.5px;
-    line-height: 1.25;
-  }
-
-  .video-channel,
-  .video-views-date {
-    font-size: 11px;
+  .player-wrapper.is-docked {
+    width: 220px;
+    height: 124px;
+    bottom: 12px;
+    right: 12px;
   }
 }
 </style>
