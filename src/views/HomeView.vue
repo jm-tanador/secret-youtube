@@ -30,10 +30,25 @@
               </div>
           </div>
 
-          <div class="wip blink-warning header-right">
-              <i class="mdi mdi-alert"></i> 
-              <span class="wip-text">Work in progress...</span>
-          </div>
+          <div class="header-right">
+            <!-- Logged in state: Show Avatar & Logout -->
+            <div v-if="user" class="user-profile-menu">
+                <v-avatar size="32">
+                    <img :src="user.avatar" :alt="user.name" class="user-avatar" />
+                </v-avatar>
+                <span class="user-name">{{ user.name }}</span>
+                <button @click="logout" class="auth-btn logout-btn">Sign out</button>
+            </div>
+
+            <!-- Logged out state: Sign in with Google -->
+            <a 
+                v-else 
+                :href="`https://backend-93t8.onrender.com/api/auth/google`" 
+                class="auth-btn login-btn"
+            >
+                <v-icon icon="mdi-account-circle" class="mr-1"></v-icon> Sign in
+            </a>
+        </div>
       </header>
 
       <div class="main-body">
@@ -117,10 +132,63 @@ export default {
       return {
           searchQuery: 'Trending',
           videos: [],
-          loading: false
+          loading: false,
+          user: null,
+          token: localStorage.getItem('auth_token') || null,
       };
   },
   methods: {
+    async checkAuth() {
+          // Check if Google redirected back with ?token=xxxxx
+          const urlParams = new URLSearchParams(window.location.search);
+          const tokenFromUrl = urlParams.get('token');
+
+          if (tokenFromUrl) {
+              this.token = tokenFromUrl;
+              localStorage.setItem('auth_token', tokenFromUrl);
+              // Clean the token parameter from the URL bar
+              window.history.replaceState({}, document.title, window.location.pathname);
+          }
+
+          if (this.token) {
+              try {
+                  const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/me`, {
+                      headers: { Authorization: `Bearer ${this.token}` }
+                  });
+                  this.user = res.data;
+              } catch (err) {
+                  // If token expired or invalid, reset
+                  this.logout();
+              }
+          }
+      },
+
+      async loadVideos() {
+          this.loading = true;
+          try {
+              // If logged in, fetch personalized feed; otherwise normal search
+              if (this.user && this.token) {
+                  const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/feed/personalized`, {
+                      headers: { Authorization: `Bearer ${this.token}` }
+                  });
+                  this.videos = response.data.items || [];
+              } else {
+                  await this.searchVideos();
+              }
+          } catch (error) {
+              console.error("Feed error:", error);
+              await this.searchVideos();
+          } finally {
+              this.loading = false;
+          }
+      },
+
+      logout() {
+          localStorage.removeItem('auth_token');
+          this.token = null;
+          this.user = null;
+          this.searchVideos();
+      },
       async searchVideos() {
           if (!this.searchQuery) return;
           this.loading = true;
@@ -240,19 +308,73 @@ export default {
       },
 
   },
-  mounted() {
+  async mounted() {
+      await this.checkAuth();
+
       const queryParam = this.$route.query.search_query;
       if (queryParam) {
           this.searchQuery = queryParam;
+          this.searchVideos();
       } else {
-          this.searchQuery = 'Trending';
+          this.loadVideos();
       }
-      this.searchVideos();
   }
 };
 </script>
 
 <style scoped>
+.user-profile-menu {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.user-name {
+  font-size: 13px;
+  max-width: 90px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.auth-btn {
+  display: flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 18px;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.login-btn {
+  color: #3ea6ff;
+  border: 1px solid #3ea6ff;
+  background: transparent;
+}
+
+.login-btn:hover {
+  background: rgba(62, 166, 255, 0.15);
+}
+
+.logout-btn {
+  color: #f1f1f1;
+  background: #272727;
+  border: 1px solid #3f3f3f;
+}
+
+.logout-btn:hover {
+  background: #3f3f3f;
+}
 /* Live badge styling */
 .live-badge {
   position: absolute;

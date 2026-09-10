@@ -131,8 +131,8 @@ export default {
     // 2. Separate Window: popup window that bypasses Error 153 restrictions
     openPopoutWindow() {
       const url = `https://www.youtube-nocookie.com/embed/${this.videoId}?autoplay=1`;
-      const width = 640;
-      const height = 360;
+      const width = 440;
+      const height = 160;
       const left = window.screen.width - width - 20;
       const top = window.screen.height - height - 80;
 
