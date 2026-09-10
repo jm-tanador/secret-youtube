@@ -217,7 +217,7 @@ export default {
           this.$router.push({ name: 'watch', params: { id: videoId } });
       },
       resetToHome() {
-          this.searchQuery = 'Trending';
+          this.searchQuery = '';
           this.searchVideos();
       },
       decodeHtml(html) {
