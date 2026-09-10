@@ -130,7 +130,7 @@ export default {
   name: 'HomeView',
   data() {
       return {
-          searchQuery: 'Trending',
+          searchQuery: '',
           videos: [],
           loading: false,
           user: null,
