@@ -147,8 +147,25 @@ export default {
       this.$router.back();
     },
 
+    async recordWatch() {
+      const token = localStorage.getItem('auth_token');
+      const v = this.videoDetails;
+      if (!token || !v) return;
+      try {
+          await axios.post(`${import.meta.env.VITE_API_BASE_URL}/history`, {
+              video_id: this.videoId,
+              channel_id: v.snippet?.channelId,
+              channel_title: v.snippet?.channelTitle,
+              title: v.snippet?.title,
+          }, { headers: { Authorization: `Bearer ${token}` } });
+      } catch (e) {
+          // not critical, ignore
+      }
+  },
+
     async loadVideoData() {
       await this.fetchVideoDetails();
+      this.recordWatch();    
       await this.fetchRelatedVideos();
     },
     async fetchVideoDetails() {
