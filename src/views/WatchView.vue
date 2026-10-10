@@ -3,9 +3,9 @@
     <div class="top-nav-actions">
       <button @click="goBack" class="back-button">← Back</button>
       
-      <!-- Pop-out Window (Separate clean window without Error 153) -->
-      <button @click="openPopoutWindow" class="pip-toggle-btn">
-        ⧉ Pop-out Window
+      <!-- Floats over other tabs/apps (falls back to pop-out on unsupported browsers) -->
+      <button @click="openFloatingPlayer" class="pip-toggle-btn">
+        ⧉ Float over other tabs
       </button>
 
       <!-- Mini Player (YouTube style floating player while browsing) -->
@@ -16,8 +16,17 @@
     
     <!-- Player container -->
     <div class="player-wrapper">
-      <iframe
+      <!-- <iframe
         :src="`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`"
+        frameborder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowfullscreen
+        class="iframe-player"
+      ></iframe> -->
+
+      <iframe
+        ref="player"
+        :src="`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&enablejsapi=1&origin=${origin}`"
         frameborder="0"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         allowfullscreen
@@ -95,6 +104,20 @@
 import axios from 'axios';
 import { playerStore } from '../playerStore';
 
+let ytApiPromise = null;
+function loadYouTubeApi() {
+  if (window.YT?.Player) return Promise.resolve();
+  if (!ytApiPromise) {
+    ytApiPromise = new Promise((resolve) => {
+      window.onYouTubeIframeAPIReady = resolve;
+      const s = document.createElement('script');
+      s.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(s);
+    });
+  }
+  return ytApiPromise;
+}
+
 export default {
   data() {
     return {
@@ -107,7 +130,8 @@ export default {
   computed: {
     isLive() {
       return this.videoDetails?.snippet?.liveBroadcastContent === 'live';
-    }
+    },
+    origin() { return window.location.origin; }
   },
   watch: {
     '$route.params.id': {
@@ -121,6 +145,47 @@ export default {
     }
   },
   methods: {
+    async getCurrentSeconds() {
+      try {
+        await loadYouTubeApi();
+        const player = await new Promise((resolve, reject) => {
+          const p = new window.YT.Player(this.$refs.player, {
+            events: { onReady: () => resolve(p) },
+          });
+          setTimeout(() => reject(new Error('timeout')), 2500);
+        });
+        const t = player.getCurrentTime();
+        player.pauseVideo();
+        return Math.floor(t);
+      } catch (e) {
+        return 0;
+      }
+    },
+
+    async openFloatingPlayer() {
+      // Browsers without Document PiP (Firefox, Safari): use your existing pop-out
+      if (!('documentPictureInPicture' in window)) {
+        this.openPopoutWindow();
+        return;
+      }
+
+      // Must be requested right away from the click
+      const pip = await window.documentPictureInPicture.requestWindow({
+        width: 480,
+        height: 270,
+      });
+      pip.document.body.style.cssText = 'margin:0;background:#000;overflow:hidden';
+
+      const start = await this.getCurrentSeconds(); // continue from where you were
+
+      const frame = pip.document.createElement('iframe');
+      frame.src = `https://www.youtube-nocookie.com/embed/${this.videoId}?autoplay=1&start=${start}`;
+      frame.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+      frame.allowFullscreen = true;
+      frame.referrerPolicy = 'strict-origin-when-cross-origin';
+      frame.style.cssText = 'width:100%;height:100%;border:0';
+      pip.document.body.append(frame);
+    },
     // 1. YouTube-style Mini Player: shrinks video to corner & goes back to previous page
     enableMiniPlayer() {
       playerStore.setVideo(this.videoId, this.videoDetails);
