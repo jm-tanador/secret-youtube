@@ -104,19 +104,7 @@
 import axios from 'axios';
 import { playerStore } from '../playerStore';
 
-let ytApiPromise = null;
-function loadYouTubeApi() {
-  if (window.YT?.Player) return Promise.resolve();
-  if (!ytApiPromise) {
-    ytApiPromise = new Promise((resolve) => {
-      window.onYouTubeIframeAPIReady = resolve;
-      const s = document.createElement('script');
-      s.src = 'https://www.youtube.com/iframe_api';
-      document.head.appendChild(s);
-    });
-  }
-  return ytApiPromise;
-}
+
 
 export default {
   data() {
@@ -145,47 +133,75 @@ export default {
     }
   },
   methods: {
-    async getCurrentSeconds() {
+    sendCommand(func) {
+  this.$refs.player?.contentWindow?.postMessage(
+    JSON.stringify({ event: 'command', func, args: [] }),
+    'https://www.youtube-nocookie.com'
+  );
+},
+
+getCurrentSeconds() {
+  return new Promise((resolve) => {
+    const iframe = this.$refs.player;
+    if (!iframe?.contentWindow) return resolve(0);
+
+    let timer, giveUp;
+    const finish = (seconds) => {
+      window.removeEventListener('message', onMessage);
+      clearInterval(timer);
+      clearTimeout(giveUp);
+      resolve(seconds);
+    };
+
+    const onMessage = (e) => {
+      if (e.source !== iframe.contentWindow) return;
       try {
-        await loadYouTubeApi();
-        const player = await new Promise((resolve, reject) => {
-          const p = new window.YT.Player(this.$refs.player, {
-            events: { onReady: () => resolve(p) },
-          });
-          setTimeout(() => reject(new Error('timeout')), 2500);
-        });
-        const t = player.getCurrentTime();
-        player.pauseVideo();
-        return Math.floor(t);
-      } catch (e) {
-        return 0;
-      }
-    },
+        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+        const t = data?.info?.currentTime;
+        if (data?.event === 'infoDelivery' && typeof t === 'number') {
+          finish(Math.floor(t));
+        }
+      } catch (err) { /* ignore other messages */ }
+    };
+    window.addEventListener('message', onMessage);
 
-    async openFloatingPlayer() {
-      // Browsers without Document PiP (Firefox, Safari): use your existing pop-out
-      if (!('documentPictureInPicture' in window)) {
-        this.openPopoutWindow();
-        return;
-      }
+    const ping = () =>
+      iframe.contentWindow?.postMessage(
+        JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }),
+        'https://www.youtube-nocookie.com'
+      );
+    ping();
+    timer = setInterval(ping, 300);
+    giveUp = setTimeout(() => finish(0), 2000); // never hang
+  });
+},
 
-      // Must be requested right away from the click
-      const pip = await window.documentPictureInPicture.requestWindow({
-        width: 480,
-        height: 270,
-      });
-      pip.document.body.style.cssText = 'margin:0;background:#000;overflow:hidden';
+async openFloatingPlayer() {
+  if (!('documentPictureInPicture' in window)) {
+    this.openPopoutWindow();
+    return;
+  }
 
-      const start = await this.getCurrentSeconds(); // continue from where you were
+  const pip = await window.documentPictureInPicture.requestWindow({
+    width: 480,
+    height: 270,
+  });
+  pip.document.body.style.cssText = 'margin:0;background:#000;overflow:hidden';
 
-      const frame = pip.document.createElement('iframe');
-      frame.src = `https://www.youtube-nocookie.com/embed/${this.videoId}?autoplay=1&start=${start}`;
-      frame.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
-      frame.allowFullscreen = true;
-      frame.referrerPolicy = 'strict-origin-when-cross-origin';
-      frame.style.cssText = 'width:100%;height:100%;border:0';
-      pip.document.body.append(frame);
-    },
+  // Live streams have no position to resume from
+  const start = this.isLive ? 0 : await this.getCurrentSeconds();
+  this.sendCommand('pauseVideo'); // stop the original so you don't hear two videos
+
+  const frame = pip.document.createElement('iframe');
+  frame.src =
+    `https://www.youtube-nocookie.com/embed/${this.videoId}?autoplay=1` +
+    (start > 0 ? `&start=${start}` : '');
+  frame.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+  frame.allowFullscreen = true;
+  frame.referrerPolicy = 'strict-origin-when-cross-origin';
+  frame.style.cssText = 'width:100%;height:100%;border:0';
+  pip.document.body.append(frame);
+},
     // 1. YouTube-style Mini Player: shrinks video to corner & goes back to previous page
     enableMiniPlayer() {
       playerStore.setVideo(this.videoId, this.videoDetails);
