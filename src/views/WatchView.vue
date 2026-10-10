@@ -7,9 +7,9 @@
                 ⧉ Float over other tabs
             </button>
 
-            <button @click="enableMiniPlayer" class="dock-toggle-btn">
+            <!-- <button @click="enableMiniPlayer" class="dock-toggle-btn">
                 ⚡ Mini Player
-            </button>
+            </button> -->
         </div>
         
         <!-- Player container -->

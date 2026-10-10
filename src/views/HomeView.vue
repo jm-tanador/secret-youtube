@@ -1,6 +1,6 @@
 <template>
     <div class="yt-app-layout">
-        <!-- 1. YouTube Header Navigation -->
+        <!-- YouTube Header Navigation -->
         <header class="yt-header">
             <div class="header-left">
                 <div class="logo-container" @click="resetToHome">
@@ -31,7 +31,6 @@
             </div>
 
             <div class="header-right">
-                <!-- Logged in state: Show Avatar & Logout -->
                 <div v-if="user" class="user-profile-menu">
                     <v-avatar size="32">
                         <img :src="user.avatar" :alt="user.name" class="user-avatar" />
@@ -40,7 +39,6 @@
                     <button @click="logout" class="auth-btn logout-btn">Sign out</button>
                 </div>
 
-                <!-- Logged out state: Sign in with Google -->
                 <a 
                     v-else 
                     :href="`https://backend-93t8.onrender.com/api/auth/google`" 
@@ -52,14 +50,12 @@
         </header>
 
         <div class="main-body">
-            <!-- 3. Main Feed -->
+            <!-- Main Feed -->
             <main class="yt-content-feed">
-                <!-- Loader -->
                 <div v-if="loading" class="loading-wrapper">
                     <v-progress-circular indeterminate color="red" size="48"></v-progress-circular>
                 </div>
 
-                <!-- Video Grid -->
                 <div v-else class="yt-video-grid">
                     <div 
                         v-for="video in videos" 
@@ -67,7 +63,6 @@
                         class="yt-video-card"
                         @click="playVideo(getVideoId(video))"
                     >
-                        <!-- In HomeView.vue inside .yt-video-card -->
 
                         <div class="thumbnail-container">
                             <img 
@@ -76,7 +71,6 @@
                                 class="yt-thumbnail" 
                             />
                             
-                            <!-- LIVE BADGE (If currently live) -->
                             <span 
                                 v-if="isLive(video)" 
                                 class="live-badge"
@@ -84,7 +78,6 @@
                                 <v-icon icon="mdi-broadcast" size="12" class="mr-1"></v-icon> LIVE
                             </span>
 
-                            <!-- DURATION BADGE (Only if not live) -->
                             <span 
                                 v-else-if="video.contentDetails?.duration && formatDuration(video.contentDetails.duration)" 
                                 class="duration-badge"
@@ -103,7 +96,6 @@
                                 <h3 class="yt-video-title">{{ decodeHtml(video.snippet?.title || '') }}</h3>
                                 <p class="yt-channel-name">{{ video.snippet?.channelTitle }}</p>
 
-                                <!-- Dynamic views display: shows watching count if live, regular views if not -->
                                 <p class="yt-views-time">
                                     <template v-if="isLive(video)">
                                         <span class="live-indicator-dot">●</span> 
@@ -158,23 +150,21 @@ export default {
                         timeout: 60000,
                     });
                     this.user = res.data;
-                    return; // success
+                    return; 
                 } catch (err) {
                     if (err.response?.status === 401) {
-                        this.logout(); // token really is invalid
+                        this.logout(); 
                         return;
                     }
                     console.warn(`Auth check failed (attempt ${attempt}), keeping login`, err);
                     await new Promise(r => setTimeout(r, 3000));
                 }
             }
-            // Server still unreachable: keep the token, stay logged out for this visit only
         },
 
         async loadVideos() {
             this.loading = true;
             try {
-                // If logged in, fetch personalized feed; otherwise normal search
                 if (this.user && this.token) {
                     const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/feed/personalized`, {
                         headers: { Authorization: `Bearer ${this.token}` }
@@ -235,12 +225,9 @@ export default {
             txt.innerHTML = html;
             return txt.value;
         },
-        // Check if the item is currently live
         isLive(video) {
             return video.snippet?.liveBroadcastContent === 'live';
         },
-
-        // Format concurrent viewers (e.g., "12.4K watching")
         formatConcurrentViewers(viewers) {
             if (!viewers) return 'LIVE';
             const num = Number(viewers);
