@@ -193,14 +193,11 @@ async openFloatingPlayer() {
   this.sendCommand('pauseVideo'); // stop the original so you don't hear two videos
 
   const frame = pip.document.createElement('iframe');
-  frame.src =
-    `https://www.youtube-nocookie.com/embed/${this.videoId}?autoplay=1` +
-    (start > 0 ? `&start=${start}` : '');
-  frame.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
-  frame.allowFullscreen = true;
-  frame.referrerPolicy = 'strict-origin-when-cross-origin';
-  frame.style.cssText = 'width:100%;height:100%;border:0';
-  pip.document.body.append(frame);
+frame.src = `${window.location.origin}/pip-player.html?v=${encodeURIComponent(this.videoId)}&start=${start}`;
+frame.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+frame.allowFullscreen = true;
+frame.style.cssText = 'width:100%;height:100%;border:0';
+pip.document.body.append(frame);
 },
     // 1. YouTube-style Mini Player: shrinks video to corner & goes back to previous page
     enableMiniPlayer() {
