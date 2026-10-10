@@ -1,103 +1,101 @@
 <template>
-  <div class="watch-container">
-    <div class="top-nav-actions">
-      <button @click="goBack" class="back-button">← Back</button>
-      
-      <!-- Floats over other tabs/apps (falls back to pop-out on unsupported browsers) -->
-      <button @click="openFloatingPlayer" class="pip-toggle-btn">
-        ⧉ Float over other tabs
-      </button>
+    <div class="watch-container">
+        <div class="top-nav-actions">
+            <button @click="goBack" class="back-button">← Back</button>
+            
+            <button @click="openFloatingPlayer" class="pip-toggle-btn">
+                ⧉ Float over other tabs
+            </button>
 
-      <!-- Mini Player (YouTube style floating player while browsing) -->
-      <button @click="enableMiniPlayer" class="dock-toggle-btn">
-        ⚡ Mini Player
-      </button>
-    </div>
-    
-    <!-- Player container -->
-    <div class="player-wrapper">
-      <!-- <iframe
-        :src="`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`"
-        frameborder="0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        allowfullscreen
-        class="iframe-player"
-      ></iframe> -->
-
-      <iframe
-        ref="player"
-        :src="`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&enablejsapi=1&origin=${origin}`"
-        frameborder="0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        allowfullscreen
-        class="iframe-player"
-      ></iframe>
-    </div>
-
-    <div class="content-wrapper">
-      <!-- Main Video Details -->
-      <div v-if="videoDetails" class="details-section">
-        <h1 class="title">
-          <span v-if="isLive" class="live-tag">LIVE</span>
-          {{ videoDetails.snippet?.title }}
-        </h1>
+            <button @click="enableMiniPlayer" class="dock-toggle-btn">
+                ⚡ Mini Player
+            </button>
+        </div>
         
-        <div class="video-meta-bar">
-          <span class="channel">{{ videoDetails.snippet?.channelTitle }}</span>
-          <span class="meta-separator">•</span>
-          
-          <span v-if="isLive" class="live-watching">
-            {{ formatViews(videoDetails.liveStreamingDetails?.concurrentViewers) }} watching now
-          </span>
-          <span v-else class="meta-views">
-            {{ formatViews(videoDetails.statistics?.viewCount) }}
-          </span>
+        <!-- Player container -->
+        <div class="player-wrapper">
+            <!-- <iframe
+                :src="`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`"
+                frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowfullscreen
+                class="iframe-player"
+            ></iframe> -->
 
-          <span class="meta-separator">•</span>
-          <span class="meta-date">{{ formatDate(videoDetails.snippet?.publishedAt) }}</span>
+            <iframe
+                ref="player"
+                :src="`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&enablejsapi=1&origin=${origin}`"
+                frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowfullscreen
+                class="iframe-player"
+            ></iframe>
         </div>
 
-        <p class="description">{{ videoDetails.snippet?.description }}</p>
-      </div>
+        <div class="content-wrapper">
+            <!-- Main Video Details -->
+            <div v-if="videoDetails" class="details-section">
+                <h1 class="title">
+                    <span v-if="isLive" class="live-tag">LIVE</span>
+                    {{ videoDetails.snippet?.title }}
+                </h1>
+                
+                <div class="video-meta-bar">
+                    <span class="channel">{{ videoDetails.snippet?.channelTitle }}</span>
+                    <span class="meta-separator">•</span>
+                    
+                    <span v-if="isLive" class="live-watching">
+                        {{ formatViews(videoDetails.liveStreamingDetails?.concurrentViewers) }} watching now
+                    </span>
+                    <span v-else class="meta-views">
+                        {{ formatViews(videoDetails.statistics?.viewCount) }}
+                    </span>
 
-      <!-- RELATED VIDEOS SECTION -->
-      <div class="related-section">
-        <h2 class="related-title">Related Videos</h2>
-        
-        <div v-if="isLoadingRelated" class="loading-state">
-          Loading recommendations...
-        </div>
+                    <span class="meta-separator">•</span>
+                    <span class="meta-date">{{ formatDate(videoDetails.snippet?.publishedAt) }}</span>
+                </div>
 
-        <div v-else-if="relatedVideos.length > 0" class="related-grid">
-          <div 
-            v-for="video in relatedVideos" 
-            :key="getVideoId(video)" 
-            class="related-card"
-            @click="playVideo(getVideoId(video))"
-          >
-            <div class="thumbnail-wrapper">
-              <img 
-                :src="video.snippet?.thumbnails?.medium?.url || video.snippet?.thumbnails?.default?.url" 
-                :alt="video.snippet?.title" 
-                class="thumbnail-img" 
-              />
+                <p class="description">{{ videoDetails.snippet?.description }}</p>
             </div>
-            <div class="video-info">
-              <h3 class="video-title">{{ video.snippet?.title }}</h3>
-              <p class="video-channel">{{ video.snippet?.channelTitle }}</p>
-              <p class="video-views-date">
-                {{ formatViews(video.statistics?.viewCount) }} • {{ timeAgo(video.snippet?.publishedAt) }}
-              </p>
-            </div>
-          </div>
-        </div>
 
-        <div v-else class="no-videos">
-          No related videos found.
+            <!-- RELATED VIDEOS SECTION -->
+            <div class="related-section">
+                <h2 class="related-title">Related Videos</h2>
+                
+                <div v-if="isLoadingRelated" class="loading-state">
+                    Loading recommendations...
+                </div>
+
+                <div v-else-if="relatedVideos.length > 0" class="related-grid">
+                    <div 
+                        v-for="video in relatedVideos" 
+                        :key="getVideoId(video)" 
+                        class="related-card"
+                        @click="playVideo(getVideoId(video))"
+                    >
+                        <div class="thumbnail-wrapper">
+                            <img 
+                                :src="video.snippet?.thumbnails?.medium?.url || video.snippet?.thumbnails?.default?.url" 
+                                :alt="video.snippet?.title" 
+                                class="thumbnail-img" 
+                            />
+                        </div>
+                        <div class="video-info">
+                            <h3 class="video-title">{{ video.snippet?.title }}</h3>
+                            <p class="video-channel">{{ video.snippet?.channelTitle }}</p>
+                            <p class="video-views-date">
+                                {{ formatViews(video.statistics?.viewCount) }} • {{ timeAgo(video.snippet?.publishedAt) }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-else class="no-videos">
+                    No related videos found.
+                </div>
+            </div>
         </div>
-      </div>
     </div>
-  </div>
 </template>
 
 <script>
@@ -107,454 +105,451 @@ import { playerStore } from '../playerStore';
 
 
 export default {
-  data() {
-    return {
-      videoId: this.$route.params.id,
-      videoDetails: null,
-      relatedVideos: [],
-      isLoadingRelated: false
-    };
-  },
-  computed: {
-    isLive() {
-      return this.videoDetails?.snippet?.liveBroadcastContent === 'live';
+    data() {
+        return {
+            videoId: this.$route.params.id,
+            videoDetails: null,
+            relatedVideos: [],
+            isLoadingRelated: false
+        };
     },
-    origin() { return window.location.origin; }
-  },
-  watch: {
-    '$route.params.id': {
-      immediate: true,
-      handler(newId) {
-        if (newId) {
-          this.videoId = newId;
-          this.loadVideoData();
+    computed: {
+        isLive() {
+            return this.videoDetails?.snippet?.liveBroadcastContent === 'live';
+        },
+        origin() { return window.location.origin; }
+    },
+    watch: {
+        '$route.params.id': {
+            immediate: true,
+            handler(newId) {
+                if (newId) {
+                this.videoId = newId;
+                this.loadVideoData();
+                }
+            }
         }
-      }
+    },
+    methods: {
+        sendCommand(func) {
+            this.$refs.player?.contentWindow?.postMessage(
+                JSON.stringify({ event: 'command', func, args: [] }),
+                'https://www.youtube-nocookie.com'
+            );
+        },
+
+        getCurrentSeconds() {
+            return new Promise((resolve) => {
+                const iframe = this.$refs.player;
+                if (!iframe?.contentWindow) return resolve(0);
+
+                let timer, giveUp;
+                const finish = (seconds) => {
+                window.removeEventListener('message', onMessage);
+                clearInterval(timer);
+                clearTimeout(giveUp);
+                resolve(seconds);
+                };
+
+                const onMessage = (e) => {
+                if (e.source !== iframe.contentWindow) return;
+                try {
+                    const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+                    const t = data?.info?.currentTime;
+                    if (data?.event === 'infoDelivery' && typeof t === 'number') {
+                    finish(Math.floor(t));
+                    }
+                } catch (err) {}
+                };
+                window.addEventListener('message', onMessage);
+
+                const ping = () =>
+                iframe.contentWindow?.postMessage(
+                    JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }),
+                    'https://www.youtube-nocookie.com'
+                );
+                ping();
+                timer = setInterval(ping, 300);
+                giveUp = setTimeout(() => finish(0), 2000); 
+            });
+        },
+
+        async openFloatingPlayer() {
+            if (!('documentPictureInPicture' in window)) {
+                this.openPopoutWindow();
+                return;
+            }
+
+            const pip = await window.documentPictureInPicture.requestWindow({
+                width: 480,
+                height: 270,
+            });
+            pip.document.documentElement.style.height = '100%';
+            pip.document.body.style.cssText = 'margin:0;height:100%;background:#000;overflow:hidden';
+
+            
+            const start = this.isLive ? 0 : await this.getCurrentSeconds();
+            this.sendCommand('pauseVideo'); 
+
+            const frame = pip.document.createElement('iframe');
+            frame.src = `${window.location.origin}/pip-player.html?v=${encodeURIComponent(this.videoId)}&start=${start}`;
+            frame.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+            frame.allowFullscreen = true;
+            frame.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0';
+            pip.document.body.append(frame);
+        },
+
+        enableMiniPlayer() {
+            playerStore.setVideo(this.videoId, this.videoDetails);
+            playerStore.minimize();
+        },
+
+        openPopoutWindow() {
+            const url = `https://www.youtube-nocookie.com/embed/${this.videoId}?autoplay=1`;
+            const width = 440;
+            const height = 160;
+            const left = window.screen.width - width - 20;
+            const top = window.screen.height - height - 80;
+
+            window.open(
+                url,
+                'EbutuoyMiniPlayer',
+                `width=${width},height=${height},left=${left},top=${top},menubar=no,status=no,titlebar=no,toolbar=no`
+            );
+        },
+
+        goBack() {
+            this.$router.back();
+        },
+
+        async recordWatch() {
+            const token = localStorage.getItem('auth_token');
+            const v = this.videoDetails;
+            if (!token || !v) return;
+            try {
+                await axios.post(`${import.meta.env.VITE_API_BASE_URL}/history`, {
+                    video_id: this.videoId,
+                    channel_id: v.snippet?.channelId,
+                    channel_title: v.snippet?.channelTitle,
+                    title: v.snippet?.title,
+                }, { headers: { Authorization: `Bearer ${token}` } });
+            } catch (e) {}
+        },
+
+        async loadVideoData() {
+            await this.fetchVideoDetails();
+        this.recordWatch();    
+            await this.fetchRelatedVideos();
+        },
+        async fetchVideoDetails() {
+            try {
+                const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/videos/${this.videoId}`);
+                if (response.data.items && response.data.items.length > 0) {
+                this.videoDetails = response.data.items[0];
+                }
+            } catch (error) {
+                console.error("Error fetching video details:", error);
+            }
+        },
+        async fetchRelatedVideos() {
+            this.isLoadingRelated = true;
+            try {
+                const searchQuery = this.videoDetails?.snippet?.channelTitle || 'trending';
+                const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/search`, {
+                    params: { q: searchQuery }
+                });
+
+                const items = response.data.items || [];
+                this.relatedVideos = items.filter(
+                    item => this.getVideoId(item) !== this.videoId
+                );
+            } catch (error) {
+                console.error("Error fetching related videos:", error);
+            } finally {
+                this.isLoadingRelated = false;
+            }
+        },
+        getVideoId(video) {
+            if (typeof video.id === 'object' && video.id !== null) {
+                return video.id.videoId || '';
+            }
+            return video.id || '';
+        },
+        playVideo(id) {
+            this.$router.push(`/watch/${id}`);
+        },
+        formatViews(views) {
+            if (!views) return 'No views';
+            const num = Number(views);
+            if (isNaN(num)) return '0 views';
+
+            if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(1).replace(/\.0$/, '') + 'B views';
+            if (num >= 1_000_000) return (num / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M views';
+            if (num >= 1_000) return (num / 1_000).toFixed(1).replace(/\.0$/, '') + 'K views';
+            return `${num} views`;
+        },
+        formatDate(dateString) {
+            if (!dateString) return '';
+            return new Date(dateString).toLocaleDateString(undefined, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        },
+        timeAgo(dateString) {
+            if (!dateString) return '';
+            const seconds = Math.floor((new Date() - new Date(dateString)) / 1000);
+            if (seconds < 60) return 'Just now';
+
+            const intervals = [
+                { label: 'year', seconds: 31536000 },
+                { label: 'month', seconds: 2592000 },
+                { label: 'week', seconds: 604800 },
+                { label: 'day', seconds: 86400 },
+                { label: 'hour', seconds: 3600 },
+                { label: 'minute', seconds: 60 }
+            ];
+
+            for (const interval of intervals) {
+                const count = Math.floor(seconds / interval.seconds);
+                if (count >= 1) return `${count} ${interval.label}${count > 1 ? 's' : ''} ago`;
+            }
+            return 'Just now';
+        }
     }
-  },
-  methods: {
-    sendCommand(func) {
-  this.$refs.player?.contentWindow?.postMessage(
-    JSON.stringify({ event: 'command', func, args: [] }),
-    'https://www.youtube-nocookie.com'
-  );
-},
-
-getCurrentSeconds() {
-  return new Promise((resolve) => {
-    const iframe = this.$refs.player;
-    if (!iframe?.contentWindow) return resolve(0);
-
-    let timer, giveUp;
-    const finish = (seconds) => {
-      window.removeEventListener('message', onMessage);
-      clearInterval(timer);
-      clearTimeout(giveUp);
-      resolve(seconds);
-    };
-
-    const onMessage = (e) => {
-      if (e.source !== iframe.contentWindow) return;
-      try {
-        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
-        const t = data?.info?.currentTime;
-        if (data?.event === 'infoDelivery' && typeof t === 'number') {
-          finish(Math.floor(t));
-        }
-      } catch (err) { /* ignore other messages */ }
-    };
-    window.addEventListener('message', onMessage);
-
-    const ping = () =>
-      iframe.contentWindow?.postMessage(
-        JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }),
-        'https://www.youtube-nocookie.com'
-      );
-    ping();
-    timer = setInterval(ping, 300);
-    giveUp = setTimeout(() => finish(0), 2000); // never hang
-  });
-},
-
-async openFloatingPlayer() {
-  if (!('documentPictureInPicture' in window)) {
-    this.openPopoutWindow();
-    return;
-  }
-
-  const pip = await window.documentPictureInPicture.requestWindow({
-    width: 480,
-    height: 270,
-  });
-  pip.document.body.style.cssText = 'margin:0;background:#000;overflow:hidden';
-
-  // Live streams have no position to resume from
-  const start = this.isLive ? 0 : await this.getCurrentSeconds();
-  this.sendCommand('pauseVideo'); // stop the original so you don't hear two videos
-
-  const frame = pip.document.createElement('iframe');
-frame.src = `${window.location.origin}/pip-player.html?v=${encodeURIComponent(this.videoId)}&start=${start}`;
-frame.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
-frame.allowFullscreen = true;
-frame.style.cssText = 'width:100%;height:100%;border:0';
-pip.document.body.append(frame);
-},
-    // 1. YouTube-style Mini Player: shrinks video to corner & goes back to previous page
-    enableMiniPlayer() {
-      playerStore.setVideo(this.videoId, this.videoDetails);
-      playerStore.minimize();
-      // this.$router.back();
-    },
-
-    // 2. Separate Window: popup window that bypasses Error 153 restrictions
-    openPopoutWindow() {
-      const url = `https://www.youtube-nocookie.com/embed/${this.videoId}?autoplay=1`;
-      const width = 440;
-      const height = 160;
-      const left = window.screen.width - width - 20;
-      const top = window.screen.height - height - 80;
-
-      window.open(
-        url,
-        'EbutuoyMiniPlayer',
-        `width=${width},height=${height},left=${left},top=${top},menubar=no,status=no,titlebar=no,toolbar=no`
-      );
-    },
-
-    goBack() {
-      this.$router.back();
-    },
-
-    async recordWatch() {
-      const token = localStorage.getItem('auth_token');
-      const v = this.videoDetails;
-      if (!token || !v) return;
-      try {
-          await axios.post(`${import.meta.env.VITE_API_BASE_URL}/history`, {
-              video_id: this.videoId,
-              channel_id: v.snippet?.channelId,
-              channel_title: v.snippet?.channelTitle,
-              title: v.snippet?.title,
-          }, { headers: { Authorization: `Bearer ${token}` } });
-      } catch (e) {
-          // not critical, ignore
-      }
-  },
-
-    async loadVideoData() {
-      await this.fetchVideoDetails();
-      this.recordWatch();    
-      await this.fetchRelatedVideos();
-    },
-    async fetchVideoDetails() {
-      try {
-        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/videos/${this.videoId}`);
-        if (response.data.items && response.data.items.length > 0) {
-          this.videoDetails = response.data.items[0];
-        }
-      } catch (error) {
-        console.error("Error fetching video details:", error);
-      }
-    },
-    async fetchRelatedVideos() {
-      this.isLoadingRelated = true;
-      try {
-        const searchQuery = this.videoDetails?.snippet?.channelTitle || 'trending';
-        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/search`, {
-          params: { q: searchQuery }
-        });
-
-        const items = response.data.items || [];
-        this.relatedVideos = items.filter(
-          item => this.getVideoId(item) !== this.videoId
-        );
-      } catch (error) {
-        console.error("Error fetching related videos:", error);
-      } finally {
-        this.isLoadingRelated = false;
-      }
-    },
-    getVideoId(video) {
-      if (typeof video.id === 'object' && video.id !== null) {
-        return video.id.videoId || '';
-      }
-      return video.id || '';
-    },
-    playVideo(id) {
-      this.$router.push(`/watch/${id}`);
-    },
-    formatViews(views) {
-      if (!views) return 'No views';
-      const num = Number(views);
-      if (isNaN(num)) return '0 views';
-
-      if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(1).replace(/\.0$/, '') + 'B views';
-      if (num >= 1_000_000) return (num / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M views';
-      if (num >= 1_000) return (num / 1_000).toFixed(1).replace(/\.0$/, '') + 'K views';
-      return `${num} views`;
-    },
-    formatDate(dateString) {
-      if (!dateString) return '';
-      return new Date(dateString).toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      });
-    },
-    timeAgo(dateString) {
-      if (!dateString) return '';
-      const seconds = Math.floor((new Date() - new Date(dateString)) / 1000);
-      if (seconds < 60) return 'Just now';
-
-      const intervals = [
-        { label: 'year', seconds: 31536000 },
-        { label: 'month', seconds: 2592000 },
-        { label: 'week', seconds: 604800 },
-        { label: 'day', seconds: 86400 },
-        { label: 'hour', seconds: 3600 },
-        { label: 'minute', seconds: 60 }
-      ];
-
-      for (const interval of intervals) {
-        const count = Math.floor(seconds / interval.seconds);
-        if (count >= 1) return `${count} ${interval.label}${count > 1 ? 's' : ''} ago`;
-      }
-      return 'Just now';
-    }
-  }
 };
 </script>
 
 <style scoped>
 .watch-container { 
-  padding: 20px; 
-  max-width: 1100px; 
-  margin: 0 auto; 
-  font-family: Roboto, Arial, sans-serif; 
-  color: #f1f1f1;
+    padding: 20px; 
+    max-width: 1100px; 
+    margin: 0 auto; 
+    font-family: Roboto, Arial, sans-serif; 
+    color: #f1f1f1;
 }
 
 .top-nav-actions {
-  display: flex;
-  align-items: center;
-  margin-bottom: 12px;
-  gap: 10px;
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+    gap: 10px;
 }
 
 .back-button, .pip-toggle-btn, .dock-toggle-btn { 
-  padding: 8px 16px; 
-  cursor: pointer; 
-  background-color: #272727;
-  color: #f1f1f1;
-  border: 1px solid #3f3f3f;
-  border-radius: 18px;
-  font-size: 13px;
-  font-weight: 500;
-  transition: all 0.2s ease;
+    padding: 8px 16px; 
+    cursor: pointer; 
+    background-color: #272727;
+    color: #f1f1f1;
+    border: 1px solid #3f3f3f;
+    border-radius: 18px;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s ease;
 }
 
 .pip-toggle-btn {
-  background-color: #1e3a8a;
-  border-color: #3b82f6;
+    background-color: #1e3a8a;
+    border-color: #3b82f6;
 }
 
 .pip-toggle-btn:hover {
-  background-color: #2563eb;
+    background-color: #2563eb;
 }
 
 .back-button:hover, .dock-toggle-btn:hover {
-  background-color: #3f3f3f;
+    background-color: #3f3f3f;
 }
 
 .player-wrapper { 
-  position: relative; 
-  width: 100%; 
-  aspect-ratio: 16 / 9;
-  background: #000; 
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid #272727;
+    position: relative; 
+    width: 100%; 
+    aspect-ratio: 16 / 9;
+    background: #000; 
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #272727;
 }
 
 .iframe-player { 
-  width: 100%; 
-  height: 100%; 
-  border: none;
-  display: block;
+    width: 100%; 
+    height: 100%; 
+    border: none;
+    display: block;
 }
 
 .content-wrapper {
-  width: 100%;
+    width: 100%;
 }
 
 .details-section { 
-  margin-top: 16px; 
-  margin-bottom: 24px;
+    margin-top: 16px; 
+    margin-bottom: 24px;
 }
 
 .title { 
-  font-size: 18px; 
-  font-weight: 600;
-  line-height: 1.4;
-  margin-bottom: 8px; 
-  color: #f1f1f1;
+    font-size: 18px; 
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: 8px; 
+    color: #f1f1f1;
 }
 
 .live-tag {
-  background-color: #cc0000;
-  color: #ffffff;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
-  margin-right: 8px;
-  vertical-align: middle;
+    background-color: #cc0000;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-right: 8px;
+    vertical-align: middle;
 }
 
 .live-watching {
-  color: #ff4e45;
-  font-weight: 500;
+    color: #ff4e45;
+    font-weight: 500;
 }
 
 .video-meta-bar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  font-size: 13px;
-  color: #aaaaaa;
-  margin-bottom: 12px;
-  gap: 6px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: #aaaaaa;
+    margin-bottom: 12px;
+    gap: 6px;
 }
 
 .channel {
-  font-weight: 500;
-  color: #f1f1f1;
+    font-weight: 500;
+    color: #f1f1f1;
 }
 
 .meta-separator {
-  color: #666;
+    color: #666;
 }
 
 .description { 
-  font-size: 13.5px; 
-  line-height: 1.5; 
-  white-space: pre-line; 
-  background: #212121; 
-  color: #e5e5e5;
-  padding: 12px 16px; 
-  border-radius: 8px; 
+    font-size: 13.5px; 
+    line-height: 1.5; 
+    white-space: pre-line; 
+    background: #212121; 
+    color: #e5e5e5;
+    padding: 12px 16px; 
+    border-radius: 8px; 
 }
 
 .related-section {
-  border-top: 1px solid #303030;
-  padding-top: 20px;
-  margin-top: 20px;
+    border-top: 1px solid #303030;
+    padding-top: 20px;
+    margin-top: 20px;
 }
 
 .related-title {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 14px;
-  color: #f1f1f1;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 14px;
+    color: #f1f1f1;
 }
 
 .related-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
 }
 
 .related-card {
-  display: flex;
-  flex-direction: column;
-  cursor: pointer;
-  border-radius: 8px;
-  overflow: hidden;
-  transition: background-color 0.2s ease;
-  padding: 6px;
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: background-color 0.2s ease;
+    padding: 6px;
 }
 
 .related-card:hover {
-  background-color: #272727;
+    background-color: #272727;
 }
 
 .thumbnail-wrapper {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  background-color: #000;
-  border-radius: 8px;
-  overflow: hidden;
-  margin-bottom: 8px;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background-color: #000;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 8px;
 }
 
 .thumbnail-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .video-info {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
 }
 
 .video-title {
-  font-size: 13.5px;
-  font-weight: 500;
-  line-height: 1.3;
-  margin: 0 0 4px 0;
-  color: #f1f1f1;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+    font-size: 13.5px;
+    font-weight: 500;
+    line-height: 1.3;
+    margin: 0 0 4px 0;
+    color: #f1f1f1;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .video-channel,
 .video-views-date {
-  font-size: 12px;
-  color: #aaaaaa;
-  margin: 0;
+    font-size: 12px;
+    color: #aaaaaa;
+    margin: 0;
 }
 
 .video-views-date {
-  margin-top: 2px;
+    margin-top: 2px;
 }
 
 .loading-state, .no-videos {
-  color: #aaaaaa;
-  font-size: 13px;
-  padding: 16px 0;
+    color: #aaaaaa;
+    font-size: 13px;
+    padding: 16px 0;
 }
 
 @media (max-width: 768px) {
-  .watch-container {
-    padding: 12px;
-  }
+    .watch-container {
+        padding: 12px;
+    }
 
-  .related-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
+    .related-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
 
-  .related-card {
-    flex-direction: row;
-    align-items: flex-start;
-    padding: 0;
-    gap: 12px;
-  }
+    .related-card {
+        flex-direction: row;
+        align-items: flex-start;
+        padding: 0;
+        gap: 12px;
+    }
 
-  .thumbnail-wrapper {
-    width: 140px;
-    min-width: 140px;
-    margin-bottom: 0;
-    border-radius: 6px;
-  }
+    .thumbnail-wrapper {
+        width: 140px;
+        min-width: 140px;
+        margin-bottom: 0;
+        border-radius: 6px;
+    }
 
-  .video-info {
-    flex: 1;
-  }
+    .video-info {
+        flex: 1;
+    }
 }
 </style>
