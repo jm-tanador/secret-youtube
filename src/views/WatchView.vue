@@ -26,7 +26,7 @@
 
       <iframe
         ref="player"
-        :src="`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`"
+        :src="`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&enablejsapi=1&origin=${origin}`"
         frameborder="0"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         allowfullscreen
